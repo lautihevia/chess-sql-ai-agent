@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.python-version
+
+# Entorno / secrets
+.env
+.env.local
+*.key
+
+# Datos locales / vector store
+chroma/
+*.sqlite3
+data/local/
+
+# Herramientas
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# SO / editor
+.DS_Store
+.idea/
+.vscode/
