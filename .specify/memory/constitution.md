@@ -1,50 +1,74 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report (temporal — puede eliminarse antes del commit)
+- Versión: (inicial) → 1.0.0
+- Principios definidos: I. Grounding-first; II. Seguridad y solo lectura;
+  III. Verificabilidad (test-first); IV. Observabilidad; V. Reproducibilidad y documentación;
+  VI. Simplicidad (YAGNI)
+- Secciones añadidas: Restricciones tecnológicas; Flujo de desarrollo (SDD); Governance
+- TODOs diferidos: ninguno
+-->
 
-## Core Principles
+# Constitución de chess-sql-ai-agent
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+## Principios fundamentales
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### I. Grounding-first (cero alucinación)
+Toda respuesta DEBE apoyarse en evidencia verificable: el resultado de una consulta SQL real
+o un fragmento recuperado de los documentos. Si no hay evidencia suficiente, el agente DEBE
+rehusarse ("no encontré esa información") en lugar de inventar. Prohibido completar con
+conocimiento general del modelo. Racional: es el criterio central de calidad y confianza del
+sistema (ver `docs/agent/grounding-policy.md`).
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Seguridad y solo lectura
+El agente SOLO ejecuta consultas de lectura (`SELECT`). Las escrituras y operaciones
+destructivas están prohibidas y se bloquean por defensa en profundidad: rol de BD de solo
+lectura, validación del SQL previa a ejecutar y prompt restrictivo. Los secretos NUNCA se
+versionan. Racional: el agente ejecuta SQL generado por un LLM sobre datos reales; la
+seguridad no puede depender solo del prompt (ver `docs/security.md`).
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### III. Verificabilidad (test-first)
+El comportamiento esperado se expresa como escenarios Gherkin ANTES de implementar, y cada
+nodo del agente DEBE tener pruebas unitarias. Los escenarios negativos (rehúso, rechazo de
+escritura) son obligatorios. Racional: previene regresiones y demuestra que el agente no
+delira (ver `docs/quality/test-strategy.md`).
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### IV. Observabilidad
+Cada ejecución del agente DEBE ser trazable e inspeccionable paso a paso (ruta elegida, SQL
+generado, fragmentos recuperados, respuesta, costo) mediante LangSmith. Racional: sin
+observabilidad no se puede depurar ni evaluar la calidad (ver `docs/quality/evaluation.md`).
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+### V. Reproducibilidad y documentación
+El proyecto DEBE poder levantarse en un entorno limpio siguiendo el README (esquema + seed
+con semilla fija + dependencias). Toda decisión relevante se registra como ADR. Racional: es
+requisito del enunciado y condición del trabajo científico/ingenieril.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### VI. Simplicidad (YAGNI)
+Ante cada elección se toma la opción más simple que cumple los criterios; no se agrega
+complejidad especulativa. Un agente que funciona vale más que documentación perfecta de uno
+que no. Racional: el proyecto es individual y acotado en el tiempo (ver `docs/risks.md`, R1).
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Restricciones tecnológicas
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+Stack fijado (ver `docs/architecture/tech-stack.md` y los ADR en `docs/decisions/`):
+Python; Claude API (razonamiento); sentence-transformers (embeddings locales, multilingüe);
+PostgreSQL en Supabase con pgvector; LangGraph (orquestación); Streamlit + Streamlit Community
+Cloud (UI y despliegue); LangSmith (observabilidad); GitHub Spec Kit (SDD).
+Este stack cubre los cinco criterios de promoción del enunciado.
 
-## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
+## Flujo de desarrollo (SDD)
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+- El desarrollo sigue Spec-Driven Development: `constitution → spec → plan → tasks → implement`.
+- La documentación de contexto (`docs/`) es la fuente de verdad y precede al código.
+- La documentación se escribe en español; los mensajes de commit, en inglés.
+- Los commits NO incluyen co-author ni atribución de IA.
+- Cada tanda de trabajo se revisa antes de commitear.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+## Gobernanza
+
+Esta constitución prevalece sobre otras prácticas del proyecto. Las enmiendas se documentan en
+este archivo, con versionado semántico (MAJOR: cambios incompatibles de principios; MINOR:
+nuevo principio o guía ampliada; PATCH: aclaraciones). Todo cambio de código DEBE ser
+consistente con estos principios; las excepciones se justifican explícitamente. Para guía de
+desarrollo en tiempo de ejecución se usan los documentos en `docs/`.
+
+**Versión**: 1.0.0 | **Ratificada**: 2026-09-26 | **Última enmienda**: 2026-09-26
