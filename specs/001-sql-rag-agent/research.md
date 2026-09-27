@@ -16,10 +16,15 @@ Consolidación de decisiones técnicas. Las decisiones formales están registrad
 ## Incógnitas resueltas (de open-questions)
 
 ### Modelo de Claude por nodo
-- **Decisión**: modelo económico para routing y text-to-SQL; modelo de gama media para síntesis.
-- **Racional**: routing y SQL son tareas acotadas; la síntesis se beneficia de mejor redacción.
-- **Alternativas**: usar un único modelo para todo (más simple pero menos costo-eficiente). Los IDs
-  y precios exactos se confirman al implementar (skill `claude-api`).
+- **Decisión**: usar **`claude-haiku-4-5`** (el modelo Claude más barato: US$1/US$5 por 1M
+  tokens entrada/salida) en **todos** los nodos (router, text-to-SQL, síntesis).
+- **Racional**: presupuesto acotado (~US$3 de crédito). Haiku alcanza para estas tareas; el
+  costo total del TP queda en centavos.
+- **Medidas de ahorro**: `max_tokens` chico por nodo (router ~10, SQL ~300, síntesis ~500); sin
+  extended thinking; **prompt caching** del prefijo estático (esquema + golden queries +
+  term-mapping) para leer contexto repetido a ~0,1× del costo; embeddings locales (sin costo de API).
+- **Alternativas**: reservar un modelo de gama media (Sonnet) para la síntesis — descartado por
+  costo. Un LLM gratis (Gemini/Groq/Ollama) — descartado para mantener el stack coherente.
 
 ### PDFs de referencia (RAG)
 - **Decisión**: (1) Leyes del Ajedrez de FIDE (reglas) y (2) un texto de teoría de aperturas de
@@ -43,6 +48,11 @@ Consolidación de decisiones técnicas. Las decisiones formales están registrad
 - **Racional**: cumple el enunciado y garantiza reproducibilidad; suficiente para consultas
   significativas.
 - **Alternativas**: dataset real (PGN) — mayor realismo pero más complejidad de ingesta.
+
+### Presupuesto de API
+- **Decisión**: crédito de ~US$3 en la API de Anthropic; Haiku 4.5 + medidas de ahorro (arriba).
+- **Racional**: la suscripción de Claude/Claude Code NO cubre la API; se factura aparte por tokens.
+  US$3 con Haiku sobra para desarrollo + coloquio.
 
 **Salida**: todas las incógnitas de [`docs/open-questions.md`](../../docs/open-questions.md) tienen
 una decisión de trabajo. Los detalles finos se afinan empíricamente durante la implementación.

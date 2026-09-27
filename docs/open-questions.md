@@ -7,7 +7,7 @@ avanza el proyecto; al cerrarse, la decisión se mueve a un ADR en [`decisions/`
 
 | # | Pregunta | Notas | Estado |
 |---|---|---|---|
-| Q1 | ¿Qué modelo Claude exacto para cada nodo? (routing/SQL vs síntesis) | Definir IDs y costo al implementar; probablemente uno económico para routing/SQL | Abierta |
+| Q1 | ¿Qué modelo Claude exacto para cada nodo? | RESUELTA: `claude-haiku-4-5` en todos los nodos (presupuesto ~US$3). Ver research.md | Resuelta |
 | Q2 | ¿Qué PDFs concretos para el RAG? | Candidatos: Leyes FIDE (oficial) + un texto de teoría de aperturas de licencia abierta | Abierta |
 | Q3 | ¿Modelo de embeddings multilingüe específico? | Candidatos: `paraphrase-multilingual-MiniLM`, `multilingual-e5` | Abierta |
 | Q4 | ¿Tamaño de chunk y `k` de recuperación? | Ajustar empíricamente con la evaluación | Abierta |
