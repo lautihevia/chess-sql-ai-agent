@@ -23,12 +23,14 @@ from chess_agent.rag.embeddings import embed_texts
 PDF_DIR = Path(__file__).resolve().parents[3] / "data" / "pdfs"
 
 # 250 palabras es el balance entre dos problemas opuestos:
-# - chunks muy chicos (ej. 50 palabras): el embedding es preciso pero le falta contexto para responder.
-# - chunks muy grandes (ej. 600+ palabras): tiene contexto pero el embedding promedia muchos temas
-#   y la búsqueda por similitud pierde precisión.
-# En documentos de referencia densos (ej. las Leyes FIDE, con muchos artículos cortos por página),
-# 250 palabras aíslan cada regla en su propio chunk; con 600 una página entera caía en un solo
-# chunk y el embedding promediaba artículos distintos, enterrando la regla buscada.
+# - chunks muy chicos (ej. 50 palabras): el embedding es preciso pero le falta
+#   contexto para responder.
+# - chunks muy grandes (ej. 600+ palabras): tiene contexto pero el embedding
+#   promedia muchos temas y la búsqueda por similitud pierde precisión.
+# En documentos de referencia densos (ej. las Leyes FIDE, con muchos artículos
+# cortos por página), 250 palabras aíslan cada regla en su propio chunk; con 600
+# una página entera caía en un solo chunk y el embedding promediaba artículos
+# distintos, enterrando la regla buscada.
 CHUNK_WORDS = 250
 # El solapamiento evita cortar ideas a la mitad: si una regla empieza al final de un chunk
 # y termina al principio del siguiente, ambos chunks la contienen completa.
