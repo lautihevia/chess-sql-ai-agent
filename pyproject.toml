@@ -1,0 +1,63 @@
+[project]
+name = "chess-sql-ai-agent"
+version = "0.1.0"
+description = "Agente conversacional que responde preguntas de ajedrez combinando text-to-SQL y RAG (LangGraph + Claude)."
+readme = "README.md"
+requires-python = ">=3.13"
+license = { text = "MIT" }
+authors = [{ name = "Lautaro Hevia" }]
+
+dependencies = [
+    # Orquestación del agente
+    "langgraph>=0.2.0",
+    "langchain-anthropic>=0.3.0",
+    "anthropic>=0.40.0",
+    # Observabilidad / evaluación
+    "langsmith>=0.2.0",
+    # Interfaz
+    "streamlit>=1.40.0",
+    # RAG: embeddings locales multilingües
+    "sentence-transformers>=3.3.0",
+    # Base de datos + vectores
+    "psycopg[binary]>=3.2.0",
+    "pgvector>=0.3.0",
+    # Ingesta de PDFs
+    "pypdf>=5.1.0",
+    # Configuración / secrets
+    "python-dotenv>=1.0.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.3.0",
+    "pytest-bdd>=8.1.0",
+    "ruff>=0.8.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/chess_agent"]
+
+# --- Herramientas ---
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+# E/W: pycodestyle · F: pyflakes · I: isort · UP: pyupgrade · B: bugbear
+select = ["E", "W", "F", "I", "UP", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# Prompts del LLM y SQL few-shot que van intencionalmente en una sola línea.
+"src/chess_agent/sql/generator.py" = ["E501"]
+"src/chess_agent/nodes/router.py" = ["E501"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+bdd_features_base_dir = "docs/requirements/use-cases"

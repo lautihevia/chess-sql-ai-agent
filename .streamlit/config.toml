@@ -1,0 +1,6 @@
+# Configuración de Streamlit.
+# fileWatcherType = "none": desactiva el auto-recargador que escanea los módulos importados.
+# Evita los ModuleNotFoundError de torchvision (transformers inspecciona modelos de visión que
+# no usamos). Contrapartida: al editar el código hay que reiniciar la app a mano.
+[server]
+fileWatcherType = "none"
