@@ -20,9 +20,9 @@ from chess_agent.state import initial_state
 
 EJEMPLOS = [
     "¿Cuántas partidas ganó Carlsen con blancas?",
-    "¿Cuáles son los 5 jugadores con mayor peak rating?",
-    "¿Qué establece la regla de la pieza tocada?",
-    "¿Cuántas veces se jugó la Siciliana y cuál es su idea principal?",
+    "¿Qué dice la regla de la pieza tocada?",
+    "¿Por qué es importante controlar el centro del tablero?",
+    "¿Cuál fue la apertura más jugada y qué principios conviene seguir en la apertura?",
 ]
 
 # Etiqueta "humana" que se muestra en el panel de progreso mientras corre cada nodo del grafo.
