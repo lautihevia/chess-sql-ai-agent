@@ -144,6 +144,8 @@ fidelidad RAG de 86% a 100% sin degradar los rehúsos.
 
 ## 8. Despliegue
 
+**App en producción:** https://chess-ai-sql-ucse.streamlit.app/
+
 - **Base de datos:** Supabase (PostgreSQL + pgvector) en la nube, acceso por SSL.
 - **App + agente:** Streamlit Community Cloud, conectado al repositorio de GitHub (redeploy
   automático en cada *push*); los secretos se cargan en *App settings → Secrets*.

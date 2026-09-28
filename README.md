@@ -1,5 +1,7 @@
 # chess-sql-ai-agent
 
+🚀 **App en vivo:** https://chess-ai-sql-ucse.streamlit.app/
+
 Agente de IA que responde preguntas en lenguaje natural (español o inglés) sobre **partidas de
 ajedrez**, decidiendo solo de qué fuente obtener el contexto (**routing**):
 
