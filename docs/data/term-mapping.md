@@ -29,10 +29,12 @@ ambigüedad y evitar que el LLM adivine.
 | "torneo", "tournament" | `tournaments.name` |
 | "ronda", "round" | `games.round` |
 | "jugada", "movimiento", "move" | `moves.san` / `moves.move_number` |
-| "campeón del mundo", "campeonato mundial", "World Champion" | `world_championships.winner` (usar `title_line = 'main'`) |
-| "se coronó campeón", "llegó a campeón" | `world_championships` con `win_number = 1` |
-| "cuántos títulos mundiales" | `MAX(world_championships.win_number)` del jugador |
+| "campeón del mundo", "campeonato mundial", "World Champion" | `world_championships` + `JOIN champions` (`winner_id` / `runner_up_id` → `champions.name`); usar `title_line = 'main'` |
+| "se coronó campeón", "llegó a campeón" | `world_championships.win_number = 1` |
+| "cuántos títulos mundiales" | `MAX(world_championships.win_number)` del campeón |
 | "campeón en el año X" | último `world_championships` con `year <= X` y `title_line = 'main'` |
+| "edad al ser campeón" | `world_championships.year - champions.birth_year` |
+| "rating de un campeón" | `champions.player_id` → `players.peak_rating` (solo 8 campeones están en `players`) |
 
 ## Convenciones
 

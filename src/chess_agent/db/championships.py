@@ -1,22 +1,32 @@
-"""Tabla `world_championships`: historial de campeonatos mundiales de ajedrez (1886-2024).
+"""Tablas `champions` y `world_championships`: campeonatos mundiales de ajedrez (1886-2024).
 
-Los datos salen de `data/pdfs/list-of-world-chess-championships.pdf` (artículo de Wikipedia,
-CC BY-SA). Son datos reales (a diferencia del resto del seed, que es sintético) y viven en una
-tabla propia: las preguntas del tipo "¿quién fue campeón en 1972?" son de datos, y el RAG las
-resolvía mal porque el PDF deja las tablas partidas en líneas sueltas.
+Los campeonatos salen de `data/pdfs/list-of-world-chess-championships.pdf` (artículo de
+Wikipedia, CC BY-SA); las fechas de nacimiento y muerte de cada persona, de Wikidata (CC0), cuyo
+identificador queda en `champions.wikidata_id` para poder verificarlas. Son datos reales (a
+diferencia del resto del seed, que es sintético). Las preguntas del tipo "¿quién fue campeón en
+1972?" son de datos, y el RAG las resolvía mal porque el PDF deja las tablas partidas en líneas.
 
-Se puede cargar de forma independiente, sin tocar las demás tablas (idempotente):
+Relaciones:
+    world_championships.winner_id / runner_up_id -> champions.champion_id
+    champions.player_id -> players.player_id   (opcional: solo si la persona está en `players`,
+                                                 es decir, coincide el nombre; hoy 8 de 44)
+
+No se guarda el país: Wikidata trae varias nacionalidades históricas por persona (p. ej.
+Capablanca figura como "Spain" como país deportivo) y elegir una sería un juicio, no un dato.
+
+Se puede cargar de forma independiente (requiere `players` ya cargada; recrea solo estas dos
+tablas):
 
     uv run python -m chess_agent.db.championships
 
-`seed.py` también la carga al regenerar la base completa.
+`seed.py` también las carga al regenerar la base completa.
 
-Columnas de cada fila (en orden de `_COLUMNS`):
+Columnas de cada fila de `CHAMPIONSHIPS` (en orden de `_COLUMNS`):
     year          año en que se jugó (en matches que cruzan año, el de inicio)
     location      sede (ciudades, en inglés)
-    winner        quien ganó o retuvo el título
+    winner        quien ganó o retuvo el título (nombre; se resuelve a `champions` al cargar)
     win_number    n-ésimo título de ese jugador, como numera la fuente (Karpov (6), etc.)
-    runner_up     rival
+    runner_up     rival (nombre; se resuelve a `champions` al cargar)
     score         marcador (ganador primero); None si no hubo match
     title_line    'main' = linaje principal (privado hasta 1946, FIDE desde 1948, reunificado
                   desde 2006), 'classical' = título clásico PCA 1993-2004,
@@ -37,13 +47,22 @@ _COLUMNS = (
 )
 
 _DDL = """
-CREATE TABLE IF NOT EXISTS world_championships (
+CREATE TABLE champions (
+    champion_id INTEGER PRIMARY KEY,
+    name        TEXT    NOT NULL UNIQUE,
+    birth_year  INTEGER NOT NULL,
+    death_year  INTEGER,
+    wikidata_id TEXT    NOT NULL,
+    player_id   INTEGER REFERENCES players (player_id)
+);
+
+CREATE TABLE world_championships (
     championship_id INTEGER PRIMARY KEY,
     year            INTEGER NOT NULL,
     location        TEXT,
-    winner          TEXT    NOT NULL,
+    winner_id       INTEGER NOT NULL REFERENCES champions (champion_id),
     win_number      INTEGER NOT NULL,
-    runner_up       TEXT    NOT NULL,
+    runner_up_id    INTEGER NOT NULL REFERENCES champions (champion_id),
     score           TEXT,
     title_line      TEXT    NOT NULL CHECK (title_line IN ('main', 'classical', 'fide_split')),
     format          TEXT    NOT NULL CHECK (format IN ('match', 'tournament', 'knockout')),
@@ -52,6 +71,55 @@ CREATE TABLE IF NOT EXISTS world_championships (
 """
 
 _TIE = "Tied match: the champion retained the title."
+
+# Personas (nombre, año de nacimiento, año de muerte o None, id de Wikidata), en orden de primera
+# aparición en CHAMPIONSHIPS. Fuente: Wikidata (propiedades P569 y P570).
+CHAMPIONS: list[tuple[str, int, int | None, str]] = [
+    ("Wilhelm Steinitz", 1836, 1900, "Q102648"),
+    ("Johannes Zukertort", 1842, 1888, "Q60182"),
+    ("Mikhail Chigorin", 1850, 1908, "Q298286"),
+    ("Isidor Gunsberg", 1854, 1930, "Q357796"),
+    ("Emanuel Lasker", 1868, 1941, "Q57095"),
+    ("Frank Marshall", 1877, 1944, "Q312814"),
+    ("Siegbert Tarrasch", 1862, 1934, "Q76558"),
+    ("Carl Schlechter", 1874, 1918, "Q320017"),
+    ("Dawid Janowski", 1868, 1927, "Q378839"),
+    ("José Raúl Capablanca", 1888, 1942, "Q160702"),
+    ("Alexander Alekhine", 1892, 1946, "Q131374"),
+    ("Efim Bogoljubow", 1889, 1952, "Q57310"),
+    ("Max Euwe", 1901, 1981, "Q173714"),
+    ("Mikhail Botvinnik", 1911, 1995, "Q178865"),
+    ("Vasily Smyslov", 1921, 2010, "Q104148"),
+    ("David Bronstein", 1924, 2006, "Q312908"),
+    ("Mikhail Tal", 1936, 1992, "Q102664"),
+    ("Tigran Petrosian", 1929, 1984, "Q180636"),
+    ("Boris Spassky", 1937, 2025, "Q177310"),
+    ("Bobby Fischer", 1943, 2008, "Q41314"),
+    ("Anatoly Karpov", 1951, None, "Q131674"),
+    ("Viktor Korchnoi", 1931, 2016, "Q212889"),
+    ("Garry Kasparov", 1963, None, "Q28614"),
+    ("Nigel Short", 1965, None, "Q313778"),
+    ("Viswanathan Anand", 1969, None, "Q45747"),
+    ("Vladimir Kramnik", 1975, None, "Q161092"),
+    ("Peter Leko", 1979, None, "Q210922"),
+    ("Jan Timman", 1951, 2026, "Q139438"),
+    ("Gata Kamsky", 1974, None, "Q315155"),
+    ("Alexander Khalifman", 1966, None, "Q106374"),
+    ("Vladimir Akopian", 1971, None, "Q380839"),
+    ("Alexei Shirov", 1972, None, "Q214713"),
+    ("Ruslan Ponomariov", 1983, None, "Q207723"),
+    ("Vasyl Ivanchuk", 1969, None, "Q208229"),
+    ("Rustam Kasimdzhanov", 1979, None, "Q489015"),
+    ("Michael Adams", 1971, None, "Q299636"),
+    ("Veselin Topalov", 1975, None, "Q172798"),
+    ("Boris Gelfand", 1968, None, "Q486778"),
+    ("Magnus Carlsen", 1990, None, "Q106807"),
+    ("Sergey Karjakin", 1990, None, "Q217198"),
+    ("Fabiano Caruana", 1992, None, "Q367277"),
+    ("Ian Nepomniachtchi", 1990, None, "Q521817"),
+    ("Ding Liren", 1992, None, "Q1191198"),
+    ("Gukesh Dommaraju", 2006, None, "Q56026072"),
+]
 
 # fmt: off
 CHAMPIONSHIPS: list[tuple[Any, ...]] = [
@@ -122,28 +190,49 @@ CHAMPIONSHIPS: list[tuple[Any, ...]] = [
 # fmt: on
 
 
-def replace_all(cur) -> int:
-    """Reemplaza el contenido de la tabla usando el cursor dado (misma transacción)."""
+def replace_all(cur) -> tuple[int, int]:
+    """Recrea y carga `champions` y `world_championships` con el cursor dado.
+
+    Devuelve `(personas, campeonatos)`. Requiere que `players` exista (por la FK opcional).
+    """
+    cur.execute("DROP TABLE IF EXISTS world_championships CASCADE")
+    cur.execute("DROP TABLE IF EXISTS champions CASCADE")
     cur.execute(_DDL)
-    cur.execute("DELETE FROM world_championships")
+
+    ids = {nombre: i for i, (nombre, *_) in enumerate(CHAMPIONS, start=1)}
     cur.executemany(
-        "INSERT INTO world_championships (championship_id, "
-        + ", ".join(_COLUMNS)
-        + ") VALUES (%s"
-        + ", %s" * len(_COLUMNS)
-        + ")",
-        [(i, *fila) for i, fila in enumerate(CHAMPIONSHIPS, start=1)],
+        "INSERT INTO champions (champion_id, name, birth_year, death_year, wikidata_id)"
+        " VALUES (%s, %s, %s, %s, %s)",
+        [(ids[nombre], nombre, nac, muerte, qid) for nombre, nac, muerte, qid in CHAMPIONS],
     )
-    return len(CHAMPIONSHIPS)
+    # Vínculo opcional con `players`: solo donde el nombre coincide (sin inventar jugadores).
+    cur.execute(
+        "UPDATE champions c SET player_id = p.player_id FROM players p WHERE p.name = c.name"
+    )
+
+    iw, ir = _COLUMNS.index("winner"), _COLUMNS.index("runner_up")
+    filas = []
+    for n, fila in enumerate(CHAMPIONSHIPS, start=1):
+        fila = list(fila)
+        fila[iw], fila[ir] = ids[fila[iw]], ids[fila[ir]]
+        filas.append((n, *fila))
+    cur.executemany(
+        "INSERT INTO world_championships (championship_id, year, location, winner_id,"
+        " win_number, runner_up_id, score, title_line, format, notes)"
+        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        filas,
+    )
+    return len(CHAMPIONS), len(CHAMPIONSHIPS)
 
 
-def load() -> int:
-    """Crea la tabla si falta y la recarga, sin tocar el resto de la base."""
+def load() -> tuple[int, int]:
+    """Recrea y recarga las dos tablas, sin tocar el resto de la base."""
     with connect(read_only=False) as conn, conn.cursor() as cur:
-        n = replace_all(cur)
+        conteo = replace_all(cur)
         conn.commit()
-    return n
+    return conteo
 
 
 if __name__ == "__main__":
-    print(f"world_championships: {load()} filas cargadas")
+    personas, campeonatos = load()
+    print(f"champions: {personas} filas | world_championships: {campeonatos} filas")

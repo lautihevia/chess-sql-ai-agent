@@ -13,7 +13,8 @@ qué fuente debe obtenerse la respuesta. Respondé SOLO con una de estas etiquet
 Criterios:
 - SQL  → la pregunta pide datos concretos que están en una base de datos relacional:
          jugadores, ratings, partidas, resultados, torneos, aperturas (como dato/conteo) y el
-         historial de campeonatos mundiales (quién fue campeón, año, rival, marcador, títulos).
+         historial de campeonatos mundiales (quién fue campeón, año, sede, rival, marcador,
+         títulos) con los datos de esas personas (nacimiento, muerte, edad).
          Ej.: "¿cuántas partidas ganó X?", "top 5 por rating", "¿quién fue campeón en 1972?".
 - RAG  → la pregunta pide conocimiento textual: reglas del ajedrez, definiciones, ideas
          estratégicas de aperturas y la historia narrada del campeonato mundial (contexto,

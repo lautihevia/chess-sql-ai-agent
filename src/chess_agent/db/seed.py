@@ -230,7 +230,7 @@ def seed() -> dict[str, int]:
             " VALUES (%s, %s, %s, %s)",
             ratings,
         )
-        n_championships = championships.replace_all(cur)
+        n_champions, n_championships = championships.replace_all(cur)
         conn.commit()
 
     return {
@@ -240,6 +240,7 @@ def seed() -> dict[str, int]:
         "games": len(games),
         "moves": len(moves),
         "player_ratings": len(ratings),
+        "champions": n_champions,
         "world_championships": n_championships,
     }
 

@@ -1,14 +1,18 @@
-"""Integridad de los datos de `world_championships` (sin BD: valida la tabla en memoria)."""
+"""Integridad de los datos de `champions` / `world_championships` (sin BD: valida en memoria)."""
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
+from pathlib import Path
 
-from chess_agent.db.championships import _COLUMNS, CHAMPIONSHIPS
+from chess_agent.db import championships
+from chess_agent.db.championships import _COLUMNS, CHAMPIONS, CHAMPIONSHIPS
 
 _IDX = {c: i for i, c in enumerate(_COLUMNS)}
 _LINEAS = {"main", "classical", "fide_split"}
 _FORMATOS = {"match", "tournament", "knockout"}
+_SCHEMA = Path(championships.__file__).with_name("schema.sql")
 
 
 def _col(nombre: str) -> list:
@@ -35,8 +39,8 @@ def test_anios_en_rango_y_orden_cronologico_por_linea():
 
 
 def test_win_number_es_consecutivo_por_jugador():
-    # Karpov (y Kasparov) acumulan títulos entre líneas, así que se cuenta por jugador en
-    # el orden de la tabla *dentro* de cada línea cronológica: nunca se repite un número.
+    # Los títulos se numeran por jugador a través de las líneas (Karpov, Kasparov, Anand...):
+    # nunca se repite un número y no hay huecos.
     vistos: dict[str, set[int]] = defaultdict(set)
     for fila in CHAMPIONSHIPS:
         jugador, n = fila[_IDX["winner"]], fila[_IDX["win_number"]]
@@ -47,10 +51,62 @@ def test_win_number_es_consecutivo_por_jugador():
 
 
 def test_datos_clave_conocidos():
-    por_anio = {
-        (f[_IDX["year"]], f[_IDX["title_line"]]): f for f in CHAMPIONSHIPS
-    }
+    por_anio = {(f[_IDX["year"]], f[_IDX["title_line"]]): f for f in CHAMPIONSHIPS}
     assert por_anio[(1972, "main")][_IDX["winner"]] == "Bobby Fischer"
     assert por_anio[(1972, "main")][_IDX["runner_up"]] == "Boris Spassky"
     assert por_anio[(2024, "main")][_IDX["winner"]] == "Gukesh Dommaraju"
     assert max(_col("win_number")) == 6  # Lasker, Karpov y Kasparov llegan a 6
+
+
+# --- champions ---
+
+
+def test_cada_campeon_aparece_en_algun_campeonato_y_viceversa():
+    nombres = {nombre for nombre, *_ in CHAMPIONS}
+    usados = set(_col("winner")) | set(_col("runner_up"))
+    assert nombres == usados, f"sin usar / sin definir: {nombres ^ usados}"
+
+
+def test_champions_sin_duplicados_y_con_datos_validos():
+    nombres = [nombre for nombre, *_ in CHAMPIONS]
+    assert len(nombres) == len(set(nombres))
+    for nombre, nacimiento, muerte, qid in CHAMPIONS:
+        assert 1800 <= nacimiento <= 2010, nombre
+        assert muerte is None or nacimiento < muerte, nombre
+        assert re.fullmatch(r"Q\d+", qid), f"{nombre}: id de Wikidata inválido {qid!r}"
+
+
+def test_los_campeones_ya_no_vivian_antes_de_ser_campeones():
+    nac = {nombre: n for nombre, n, _, _ in CHAMPIONS}
+    muerte = {nombre: m for nombre, _, m, _ in CHAMPIONS}
+    for fila in CHAMPIONSHIPS:
+        anio = fila[_IDX["year"]]
+        for rol in ("winner", "runner_up"):
+            nombre = fila[_IDX[rol]]
+            assert nac[nombre] < anio, f"{nombre} no había nacido en {anio}"
+            assert muerte[nombre] is None or muerte[nombre] >= anio, f"{nombre} ya había muerto"
+
+
+# --- el DDL del módulo y el de schema.sql no deben divergir ---
+
+
+def _normalizar(ddl: str) -> str:
+    ddl = re.sub(r"--[^\n]*", "", ddl)  # comentarios
+    ddl = re.sub(r"IF NOT EXISTS ", "", ddl)
+    return re.sub(r"\s+", " ", ddl).strip().replace("( ", "(").replace(" )", ")")
+
+
+def _create_tables(sql: str, tablas: tuple[str, ...]) -> dict[str, str]:
+    out = {}
+    for t in tablas:
+        m = re.search(rf"CREATE TABLE (?:IF NOT EXISTS )?{t} \(.*?\n\);", sql, re.DOTALL)
+        assert m, f"no se encontró CREATE TABLE {t}"
+        out[t] = _normalizar(m.group(0))
+    return out
+
+
+def test_ddl_del_modulo_coincide_con_schema_sql():
+    tablas = ("champions", "world_championships")
+    assert _create_tables(championships._DDL, tablas) == _create_tables(
+        _SCHEMA.read_text(encoding="utf-8"), tablas
+    )

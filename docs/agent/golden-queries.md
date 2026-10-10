@@ -27,10 +27,12 @@ Pares curados **pregunta en lenguaje natural → SQL correcto**. Cumplen doble f
 | 14 | ¿Cuál es el jugador más joven? | `SELECT name, birth_year FROM players WHERE birth_year IS NOT NULL ORDER BY birth_year DESC LIMIT 1;` |
 | 15 | ¿Cuántas partidas ganaron las blancas vs las negras? | `SELECT result, COUNT(*) FROM games WHERE result IN ('1-0','0-1') GROUP BY result;` |
 
-| 16 | ¿Quién ganó el campeonato mundial de 1972 y contra quién? | `SELECT winner, runner_up, score FROM world_championships WHERE year=1972 AND title_line='main';` |
-| 17 | ¿Quién era el campeón del mundo en 1950? | `SELECT winner, year FROM world_championships WHERE title_line='main' AND year<=1950 ORDER BY year DESC, championship_id DESC LIMIT 1;` |
-| 18 | ¿Cuántos títulos mundiales ganó Kasparov? | `SELECT MAX(win_number) FROM world_championships WHERE winner ILIKE '%Kasparov%';` |
-| 19 | ¿En qué año se coronó campeón del mundo Capablanca? | `SELECT year, runner_up, score FROM world_championships WHERE winner ILIKE '%Capablanca%' AND win_number=1;` |
+| 16 | ¿Quién ganó el campeonato mundial de 1972 y contra quién? | `SELECT w.name AS winner, r.name AS runner_up, wc.score FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id JOIN champions r ON wc.runner_up_id=r.champion_id WHERE wc.year=1972 AND wc.title_line='main';` |
+| 17 | ¿Quién era el campeón del mundo en 1950? | `SELECT w.name AS champion, wc.year AS last_title_match_year FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id WHERE wc.title_line='main' AND wc.year<=1950 ORDER BY wc.year DESC, wc.championship_id DESC LIMIT 1;` |
+| 18 | ¿Cuántos títulos mundiales ganó Kasparov? | `SELECT MAX(wc.win_number) FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id WHERE w.name ILIKE '%Kasparov%';` |
+| 19 | ¿En qué año se coronó campeón del mundo Capablanca y a quién derrotó? | `SELECT wc.year, r.name AS runner_up, wc.score FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id JOIN champions r ON wc.runner_up_id=r.champion_id WHERE w.name ILIKE '%Capablanca%' AND wc.win_number=1;` |
+| 20 | ¿Qué edad tenía Fischer cuando fue campeón del mundo? | `SELECT wc.year - w.birth_year AS age FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id WHERE w.name ILIKE '%Fischer%' AND wc.win_number=1;` |
+| 21 | ¿Cuál es el peak rating de los campeones del mundo que están en la lista de jugadores? | `SELECT DISTINCT c.name, p.peak_rating FROM champions c JOIN players p ON c.player_id=p.player_id JOIN world_championships wc ON wc.winner_id=c.champion_id ORDER BY p.peak_rating DESC NULLS LAST;` |
 
 Se ampliará el catálogo a ~20 pares durante la implementación, cubriendo también casos de
 rehúso (preguntas sin datos) para robustecer la evaluación.
