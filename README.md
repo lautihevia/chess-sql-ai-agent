@@ -94,8 +94,11 @@ cp .env.example .env
 ## Preparación de los datos
 
 ```bash
-# 1. Crea el esquema (6 tablas + pgvector) y carga datos sintéticos deterministas
+# 1. Crea el esquema (8 tablas + pgvector) y carga los datos: sintéticos y deterministas
+#    (6 tablas) + campeonatos mundiales reales (champions, world_championships)
 uv run python -m chess_agent.db.seed
+#    Para recargar solo los campeonatos mundiales, sin tocar el resto:
+#    uv run python -m chess_agent.db.championships
 
 # 2. Indexa los PDFs de data/pdfs/ (chunks + embeddings en pgvector)
 uv run python -m chess_agent.rag.ingest
@@ -103,6 +106,8 @@ uv run python -m chess_agent.rag.ingest
 
 Ambos comandos son idempotentes. El seed usa semilla fija (reproducible). La ingesta reemplaza
 los chunks por archivo; para reemplazar todos los PDFs conviene vaciar antes `document_chunks`.
+Si se cambia `CHUNK_WORDS` (`rag/ingest.py`) hay que volver a correr la ingesta para que los
+chunks existentes se regeneren con el nuevo tamaño.
 
 ## Ejecución
 
@@ -114,13 +119,15 @@ Se abre en `http://localhost:8501`. Ejemplos de preguntas:
 
 - Datos (SQL): *"¿cuántas partidas ganó Carlsen con blancas?"*, *"top 5 jugadores por rating"*.
 - Reglas/teoría (RAG): *"¿qué establece la regla de la pieza tocada?"*, *"¿cuál es la idea de la Siciliana?"*.
+- Campeonatos mundiales (SQL): *"¿quién fue campeón del mundo en 1972 y a quién derrotó?"*, *"¿cuántos años vivió Capablanca?"*.
+- Historia del campeonato (RAG): *"¿por qué perdió Fischer el título en 1975?"*.
 - Mixta: *"¿cuántas veces se jugó la Siciliana y cuál es su idea principal?"*.
 - Inglés: *"how many games did Carlsen win with white?"*.
 
 ## Pruebas
 
 ```bash
-uv run pytest tests/unit          # unitarios (validador, seguridad) — sin API
+uv run pytest tests/unit          # unitarios (validador, seguridad, datos de campeones) — sin API
 uv run pytest tests/bdd           # escenarios Gherkin end-to-end — requiere API + datos
 uv run ruff check src tests       # linting
 ```

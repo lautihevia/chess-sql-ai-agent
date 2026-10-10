@@ -14,7 +14,7 @@ lenguaje natural (español o inglés) sobre partidas de ajedrez y responde decid
 de qué fuente obtener el contexto (*routing*):
 
 1. una **base de datos relacional**, traduciendo la pregunta a SQL (*text-to-SQL*);
-2. un **repositorio documental**, mediante **RAG** sobre PDFs (Leyes FIDE + teoría de aperturas).
+2. un **repositorio documental**, mediante **RAG** sobre PDFs (Leyes FIDE, teoría de aperturas e historia del campeonato mundial).
 
 El dominio elegido es el ajedrez. La solución es un grafo de agente (router → SQL/RAG → síntesis)
 orquestado con **LangGraph**, con **Claude** como motor de razonamiento, embeddings locales,
@@ -24,8 +24,8 @@ de **solo lectura** a los datos.
 
 ## 2. Modelo de datos
 
-La base tiene **6 tablas** relacionales (datos sintéticos, generados con semilla fija para
-reproducibilidad):
+La base tiene **8 tablas** relacionales: 6 con datos sintéticos (generados con semilla fija
+para reproducibilidad) y 2 con datos **reales** de los campeonatos mundiales de ajedrez:
 
 | Tabla | Descripción | Claves |
 |---|---|---|
@@ -35,11 +35,20 @@ reproducibilidad):
 | `games` | Partidas (blancas, negras, apertura, resultado, nº jugadas) | PK `game_id`, FKs |
 | `moves` | Jugadas, **una fila por media jugada (ply)** | PK `move_id`, FK `game_id` (indexada) |
 | `player_ratings` | Historial de rating por jugador y fecha | PK `rating_id`, FK `player_id` |
+| `champions` | Personas que jugaron un campeonato mundial (nombre, año de nacimiento y muerte, id de Wikidata) | PK `champion_id`, FK opcional `player_id` |
+| `world_championships` | Campeonatos mundiales 1886-2024 (año, sede, ganador, rival, marcador, línea del título) | PK `championship_id`, FKs `winner_id`, `runner_up_id` |
 
 Restricciones de integridad clave: `result ∈ {1-0, 0-1, 1/2-1/2}`, `color ∈ {white, black}`,
 blancas ≠ negras en cada partida, e integridad referencial en todas las FK. Se agrega un índice
 en `moves.game_id` (ADR 0003) para reconstruir partidas de forma eficiente. Volúmenes cargados:
-30 jugadores, 20 aperturas, 15 torneos, 150 partidas, ~9.000 jugadas y 180 ratings.
+30 jugadores, 20 aperturas, 15 torneos, 150 partidas, ~9.000 jugadas y 180 ratings, más 44
+personas y 58 campeonatos mundiales.
+
+Los campeonatos son datos reales, extraídos del PDF de la lista de campeonatos mundiales
+(Wikipedia, CC BY-SA); los años de nacimiento y muerte, de Wikidata. `champions.player_id` es un
+vínculo **opcional** con `players` (solo 8 de las 44 personas coinciden): no se inventaron jugadores
+sintéticos para los campeones históricos. Tampoco se guarda el país, porque Wikidata trae varias
+nacionalidades históricas por persona y elegir una sería un juicio, no un dato.
 
 > **Evidencia:** insertar el diagrama ER (`docs/data/data-model.md`).
 
@@ -58,7 +67,9 @@ pregunta ─► router ─┬─ SQL   ─► sql_node ────────�
   *golden queries* y un mapeo de términos) → **valida** (solo lectura) → ejecuta → **reintenta
   una vez** con el mensaje de error si falla.
 - **Nodo RAG**: embebe la pregunta y recupera los *top-k* fragmentos por similitud coseno en
-  pgvector, con **recall alto**; adjunta la fuente y la página de cada fragmento.
+  pgvector, con **recall alto** (k = 8); adjunta la fuente y la página de cada fragmento. Los
+  documentos se parten en chunks de 70 palabras: el modelo de embeddings solo lee los primeros
+  128 tokens de cada texto y con chunks de 250 palabras el 91% quedaba truncado (ver sección 7).
 - **Nodo Síntesis**: redacta la respuesta usando **solo** la evidencia (resultado SQL y/o
   fragmentos). Si la evidencia no alcanza, rehúsa (patrón *LLM-as-judge* con sentinel
   `NO_ANSWER`). Responde en el idioma de la pregunta y cita las fuentes en las respuestas RAG.
@@ -120,24 +131,40 @@ De la validación real (`docs/quickstart-validation.md`):
 ## 7. Pruebas y evaluación
 
 **Pruebas automatizadas:**
-- **33** pruebas unitarias (validador SQL + seguridad), sin costo de API.
+- **42** pruebas unitarias (validador SQL, seguridad e integridad de los datos de campeonatos),
+  sin costo de API.
 - **14** escenarios BDD (Gherkin) end-to-end: 6 SQL, 4 RAG, 4 routing.
 - Linting con `ruff`.
 
-**Evaluación sistemática (LangSmith)** sobre un dataset de 18 casos curados (SQL, RAG, mixtos y
-de rehúso, en español e inglés):
+**Evaluación sistemática (LangSmith)** sobre un dataset de 22 casos curados (SQL, RAG, mixtos y
+de rehúso, en español e inglés). Resultados de la última corrida local:
 
 | Métrica | Resultado |
 |---|---|
-| Exactitud de enrutamiento | **100%** (18/18) |
-| Exactitud SQL | **100%** (8/8) |
-| Fidelidad RAG (con cita) | **100%** (7/7) |
+| Exactitud de enrutamiento | **100%** (22/22) |
+| Exactitud SQL | **100%** (11/11) |
+| Fidelidad RAG (con cita) | **62%** (5/8) |
 | Tasa de rehúso correcto | **100%** (4/4) |
-| Latencia media | ~4,8 s por consulta |
+| Latencia media | ~5,2 s por consulta |
+
+La fidelidad RAG bajó respecto de la evaluación anterior (100%, 7/7) porque cambiaron los
+documentos: al reemplazar los PDFs de muestra por las Leyes FIDE completas y el libro de
+Capablanca, **dos de los tres casos que fallan** (la idea de la Defensa Siciliana, en español e
+inglés) preguntan algo que ya no está en los documentos indexados; el rehúso del agente en esos
+casos es el comportamiento correcto, pero el dataset todavía los cuenta como fallo. El tercero
+(*¿qué es el rey ahogado?*) falla por una limitación del modelo de embeddings entre idiomas: en
+inglés (*stalemate*) recupera el fragmento correcto, en español no.
 
 Ajuste relevante durante la evaluación: se pasó de un umbral de similitud fijo (que descartaba
 reformulaciones válidas) a **recall alto + juicio del LLM** (`NO_ANSWER`), lo que subió la
 fidelidad RAG de 86% a 100% sin degradar los rehúsos.
+
+Un segundo ajuste, ya con los documentos nuevos: se midió con el tokenizer del modelo que el 91%
+de los chunks de 250 palabras superaba los 128 tokens que `paraphrase-multilingual-MiniLM-L12`
+realmente lee, así que los datos en la parte final de cada chunk no se podían recuperar. Se
+redujo el chunk a 70 palabras (solo ~9% supera la ventana) y se subió `k` de 4 a 8 para mantener
+un volumen de contexto similar. Resultado: la fidelidad RAG subió de 38% a 62% (3/8 a 5/8) con
+los mismos documentos, sin cambios en enrutamiento, SQL ni rehúsos.
 
 > **Evidencia:** insertar capturas de trazas de LangSmith (un caso correcto y uno de rehúso) y
 > del experimento `chess-agent-eval`.
@@ -168,6 +195,8 @@ enrutamiento automático, soporte bilingüe, respuestas fundamentadas y acceso d
 | Observabilidad y evaluación | LangSmith (trazas + experimento con métricas) |
 | Desarrollo dirigido por especificación (SDD) | GitHub Spec Kit (constitution, spec, plan, tasks) |
 
-**Mejoras futuras:** reemplazar los PDFs de muestra por los documentos oficiales completos,
-probar un modelo de embeddings con mayor separación (p. ej. *multilingual-e5*), *prompt caching*
+**Mejoras futuras:** traducir la pregunta al inglés antes de recuperar (los documentos están
+sobre todo en inglés y el modelo separa mal los idiomas), reemplazar los casos de la Siciliana del
+dataset de evaluación, probar un modelo de embeddings con ventana más larga o mayor separación
+(p. ej. *multilingual-e5*), *prompt caching*
 del prefijo estático del nodo SQL para reducir costos, y ampliar el dataset de evaluación.
