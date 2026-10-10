@@ -13,7 +13,9 @@ from chess_agent.db.client import STATEMENT_TIMEOUT_MS, connect
 from chess_agent.rag.embeddings import embed_query
 from chess_agent.state import RagChunk
 
-DEFAULT_K = 4
+# Con chunks de ~70 palabras (ver rag/ingest.py) k=4 aportaba solo ~280 palabras de contexto;
+# k=8 devuelve ~560, parecido al volumen anterior (4 chunks de 250 palabras).
+DEFAULT_K = 8
 # Similitud coseno mínima (0-1). Umbral BAJO a propósito: se prioriza el recall (traer los
 # fragmentos potencialmente útiles) y se delega la decisión final de grounding al nodo de
 # síntesis, que responde NO_ANSWER si el contexto recuperado no cubre la pregunta. El modelo
