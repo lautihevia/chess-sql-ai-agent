@@ -27,5 +27,10 @@ Pares curados **pregunta en lenguaje natural → SQL correcto**. Cumplen doble f
 | 14 | ¿Cuál es el jugador más joven? | `SELECT name, birth_year FROM players WHERE birth_year IS NOT NULL ORDER BY birth_year DESC LIMIT 1;` |
 | 15 | ¿Cuántas partidas ganaron las blancas vs las negras? | `SELECT result, COUNT(*) FROM games WHERE result IN ('1-0','0-1') GROUP BY result;` |
 
+| 16 | ¿Quién ganó el campeonato mundial de 1972 y contra quién? | `SELECT winner, runner_up, score FROM world_championships WHERE year=1972 AND title_line='main';` |
+| 17 | ¿Quién era el campeón del mundo en 1950? | `SELECT winner, year FROM world_championships WHERE title_line='main' AND year<=1950 ORDER BY year DESC, championship_id DESC LIMIT 1;` |
+| 18 | ¿Cuántos títulos mundiales ganó Kasparov? | `SELECT MAX(win_number) FROM world_championships WHERE winner ILIKE '%Kasparov%';` |
+| 19 | ¿En qué año se coronó campeón del mundo Capablanca? | `SELECT year, runner_up, score FROM world_championships WHERE winner ILIKE '%Capablanca%' AND win_number=1;` |
+
 Se ampliará el catálogo a ~20 pares durante la implementación, cubriendo también casos de
 rehúso (preguntas sin datos) para robustecer la evaluación.

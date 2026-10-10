@@ -71,6 +71,28 @@ Convenciones: PK = clave primaria, FK = clave foránea. Todos los `*_id` son ent
 | `rating_date` | DATE | no | Fecha de la medición | `YYYY-MM-DD` |
 | `rating` | INT | no | Rating en esa fecha | ej. 2850 |
 
+## `world_championships` — campeonatos mundiales (datos reales, 1886-2024)
+
+Tabla independiente (sin FK con las demás): son datos reales extraídos de
+`data/pdfs/list-of-world-chess-championships.pdf`, no parte del seed sintético. Los nombres
+son texto libre (no se enlazan con `players`). Se carga con `uv run python -m chess_agent.db.championships`.
+
+| Columna | Tipo | Nulo | Descripción | Valores válidos |
+|---|---|---|---|---|
+| `championship_id` | INT | no | Identificador | PK |
+| `year` | INT | no | Año en que se jugó (si cruza año, el de inicio) | 1886–2024 |
+| `location` | TEXT | sí | Sede | ciudades en inglés, ej. "Reykjavík" |
+| `winner` | TEXT | no | Quien ganó o retuvo el título | ej. "Bobby Fischer" |
+| `win_number` | INT | no | N-ésimo título de ese jugador (como numera la fuente) | 1 = primera vez que se coronó |
+| `runner_up` | TEXT | no | Rival | ej. "Boris Spassky" |
+| `score` | TEXT | sí | Marcador, ganador primero | ej. "12½–8½"; `NULL` en 1975 (Fischer no jugó) |
+| `title_line` | TEXT | no | Linaje del título | `main`, `classical` (PCA 1993-2004), `fide_split` (FIDE 1993-2005) |
+| `format` | TEXT | no | Formato | `match`, `tournament`, `knockout` |
+| `notes` | TEXT | sí | Aclaraciones | ej. empate que retiene el título |
+
+Para "campeón en el año X" hay que usar `title_line = 'main'` y tomar el último campeonato con
+`year <= X`; entre 1993 y 2006 hubo dos títulos rivales (`classical` y `fide_split`).
+
 ## Reglas semánticas clave (para text-to-SQL)
 
 - **"Ganó con blancas"** → `games.white_player_id = <jugador> AND result = '1-0'`.

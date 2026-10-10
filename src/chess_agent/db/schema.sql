@@ -1,4 +1,4 @@
--- Esquema de la BD de ajedrez (6 tablas relacionales).
+-- Esquema de la BD de ajedrez (6 tablas relacionales + world_championships).
 -- Fuente de verdad: docs/data/data-dictionary.md y specs/001-sql-rag-agent/data-model.md.
 --
 -- Los IDs son enteros asignados explícitamente por el seed (no SERIAL) para que la generación
@@ -92,6 +92,27 @@ CREATE TABLE player_ratings (
 CREATE INDEX idx_games_white_player ON games (white_player_id);
 CREATE INDEX idx_games_black_player ON games (black_player_id);
 CREATE INDEX idx_player_ratings_player ON player_ratings (player_id);
+
+-- ---------------------------------------------------------------------------
+-- world_championships — historial de campeonatos mundiales (datos reales, 1886-2024)
+-- Independiente del resto: sin FK y con IF NOT EXISTS, así no se pierde al reseed de las
+-- tablas sintéticas. Se carga con db/championships.py (también lo hace seed.py).
+-- title_line: 'main' = linaje principal (privado hasta 1946, FIDE desde 1948, reunificado
+--             desde 2006); 'classical' = título clásico PCA 1993-2004; 'fide_split' = título
+--             FIDE durante el cisma 1993-2005. Hay varias filas en 1993 y en 2000/2004.
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS world_championships (
+    championship_id INTEGER PRIMARY KEY,
+    year            INTEGER NOT NULL,   -- año en que se jugó (si cruza año, el de inicio)
+    location        TEXT,               -- sede (ciudades, en inglés)
+    winner          TEXT    NOT NULL,   -- quien ganó o retuvo el título
+    win_number      INTEGER NOT NULL,   -- n-ésimo título de ese jugador (como numera la fuente)
+    runner_up       TEXT    NOT NULL,   -- rival
+    score           TEXT,               -- marcador, ganador primero (NULL si no hubo match)
+    title_line      TEXT    NOT NULL CHECK (title_line IN ('main', 'classical', 'fide_split')),
+    format          TEXT    NOT NULL CHECK (format IN ('match', 'tournament', 'knockout')),
+    notes           TEXT                -- aclaraciones (empate que retiene el título, etc.)
+);
 
 -- ---------------------------------------------------------------------------
 -- RAG: vectores de los fragmentos de PDFs (pgvector).

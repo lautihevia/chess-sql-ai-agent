@@ -17,6 +17,7 @@ import datetime as dt
 import random
 from pathlib import Path
 
+from chess_agent.db import championships
 from chess_agent.db.client import connect
 
 #Este archivo sirve para cargar los datos de prueba en supabase. Podria verse luego alguna mejor forma de cargar estas
@@ -229,6 +230,7 @@ def seed() -> dict[str, int]:
             " VALUES (%s, %s, %s, %s)",
             ratings,
         )
+        n_championships = championships.replace_all(cur)
         conn.commit()
 
     return {
@@ -238,6 +240,7 @@ def seed() -> dict[str, int]:
         "games": len(games),
         "moves": len(moves),
         "player_ratings": len(ratings),
+        "world_championships": n_championships,
     }
 
 

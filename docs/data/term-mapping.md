@@ -29,6 +29,10 @@ ambigüedad y evitar que el LLM adivine.
 | "torneo", "tournament" | `tournaments.name` |
 | "ronda", "round" | `games.round` |
 | "jugada", "movimiento", "move" | `moves.san` / `moves.move_number` |
+| "campeón del mundo", "campeonato mundial", "World Champion" | `world_championships.winner` (usar `title_line = 'main'`) |
+| "se coronó campeón", "llegó a campeón" | `world_championships` con `win_number = 1` |
+| "cuántos títulos mundiales" | `MAX(world_championships.win_number)` del jugador |
+| "campeón en el año X" | último `world_championships` con `year <= X` y `title_line = 'main'` |
 
 ## Convenciones
 

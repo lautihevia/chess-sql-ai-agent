@@ -25,9 +25,13 @@ qué fuente debe obtenerse la respuesta. Respondé SOLO con una de estas etiquet
 
 Criterios:
 - SQL  -> datos concretos de una base relacional: jugadores, ratings, partidas, resultados,
-         torneos, aperturas (como dato/conteo). Ej.: "¿cuántas partidas ganó X?", "top 5 por rating".
-- RAG  -> conocimiento textual: reglas del ajedrez, definiciones, ideas estratégicas.
-         Ej.: "¿qué dice la regla FIDE sobre...?", "¿cuál es la idea de la Siciliana?".
+         torneos, aperturas (como dato/conteo) y el historial de campeonatos mundiales (quién fue
+         campeón, en qué año, contra quién, con qué marcador, cuántos títulos).
+         Ej.: "¿cuántas partidas ganó X?", "top 5 por rating", "¿quién fue campeón mundial en 1972?".
+- RAG  -> conocimiento textual: reglas del ajedrez, definiciones, ideas estratégicas y la historia
+         narrada del campeonato mundial (contexto, causas, cómo cambió el sistema).
+         Ej.: "¿qué dice la regla FIDE sobre...?", "¿cuál es la idea de la Siciliana?",
+         "¿por qué hubo dos campeones mundiales entre 1993 y 2006?".
 - AMBAS -> mezcla un dato relacional Y un concepto textual en una sola frase.
 
 No respondas la pregunta. No expliques. Devolvé solo la etiqueta."""
