@@ -10,7 +10,7 @@ avanza el proyecto; al cerrarse, la decisión se mueve a un ADR en [`decisions/`
 | Q1 | ¿Qué modelo Claude exacto para cada nodo? | RESUELTA: `claude-haiku-4-5` en todos los nodos (presupuesto ~US$3). Ver research.md | Resuelta |
 | Q2 | ¿Qué PDFs concretos para el RAG? | Candidatos: Leyes FIDE (oficial) + un texto de teoría de aperturas de licencia abierta | Abierta |
 | Q3 | ¿Modelo de embeddings multilingüe específico? | Candidatos: `paraphrase-multilingual-MiniLM`, `multilingual-e5` | Abierta |
-| Q4 | ¿Tamaño de chunk y `k` de recuperación? | RESUELTA: chunks de 70 palabras (solape 15) y `k = 8`. El modelo de embeddings solo lee 128 tokens; con 250 palabras el 91% de los chunks quedaba truncado. Fidelidad RAG 38% → 62% | Resuelta |
+| Q4 | ¿Tamaño de chunk y `k` de recuperación? | RESUELTA: chunks de 70 palabras (solape 15) y `k = 8`. El modelo de embeddings solo lee 128 tokens; con 250 palabras el 91% de los chunks quedaba truncado. Fidelidad RAG 38% → 62%. Ver [ADR 0006](decisions/0006-tamano-de-chunk-y-k.md) | Resuelta |
 | Q5 | ¿Se usa un dataset real de partidas (PGN) o 100% sintético? | Sintético alcanza; un dataset real daría más realismo | Abierta |
 | Q6 | ¿Mostrar el grafo del agente en la UI? | Suma para el coloquio; opcional | Abierta |
 
@@ -23,3 +23,4 @@ avanza el proyecto; al cerrarse, la decisión se mueve a un ADR en [`decisions/`
 | ¿Modelado de `moves`? | Una fila por ply, con índice | [0003](decisions/0003-moves-por-ply.md) |
 | ¿Embeddings? | Locales (sentence-transformers) | [0004](decisions/0004-embeddings-locales.md) |
 | ¿Vector store? | pgvector en Supabase (plan B: Chroma) | [0005](decisions/0005-pgvector.md) |
+| ¿Tamaño de chunk y `k`? | Chunks de 70 palabras (solape 15) y `k = 8` | [0006](decisions/0006-tamano-de-chunk-y-k.md) |

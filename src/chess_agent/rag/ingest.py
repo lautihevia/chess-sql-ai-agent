@@ -22,6 +22,7 @@ from chess_agent.rag.embeddings import embed_texts
 
 PDF_DIR = Path(__file__).resolve().parents[3] / "data" / "pdfs"
 
+# Decisión, mediciones y alternativas: docs/decisions/0006-tamano-de-chunk-y-k.md
 # El tamaño del chunk está acotado por el modelo de embeddings: paraphrase-multilingual-MiniLM-L12
 # solo "lee" los primeros 128 tokens de cada texto (max_seq_length) y trunca el resto en silencio.
 # Con chunks de 250 palabras (~350 tokens) el 91% de los fragmentos quedaba truncado: el vector
