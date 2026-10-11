@@ -16,6 +16,7 @@ Convenciones: PK = clave primaria, FK = clave foránea. Todos los `*_id` son ent
 | `birth_year` | INT | sí | Año de nacimiento | ej. 1990 |
 | `title` | TEXT | sí | Título FIDE | `GM`, `IM`, `FM`, `WGM`, `WIM`, `CM`, `NM`, o `NULL` |
 | `peak_rating` | INT | sí | Máximo rating histórico | ej. 2882 |
+| `wikidata_id` | TEXT | sí | Identificador de la persona en Wikidata | único; `NULL` en los jugadores sintéticos; ej. "Q106807" |
 
 ## `openings` — aperturas
 
@@ -84,8 +85,8 @@ sería un juicio, no un dato.
 | `name` | TEXT | no | Nombre completo | único, ej. "Bobby Fischer" |
 | `birth_year` | INT | no | Año de nacimiento | ej. 1943 |
 | `death_year` | INT | sí | Año de fallecimiento | `NULL` si vive |
-| `wikidata_id` | TEXT | no | Identificador en Wikidata | ej. "Q41314" |
-| `player_id` | INT | sí | Vínculo opcional con `players` | FK → `players`; solo donde el nombre coincide (8 de 44), `NULL` el resto |
+| `wikidata_id` | TEXT | no | Identificador en Wikidata: permite verificar los años y es la clave que une la persona con `players.wikidata_id` | ej. "Q41314" |
+| `player_id` | INT | sí | Vínculo opcional con `players`, resuelto por `wikidata_id` | FK → `players`; 8 de 44, `NULL` el resto |
 
 ## `world_championships` — campeonatos mundiales (datos reales, 1886-2024)
 

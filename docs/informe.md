@@ -46,8 +46,9 @@ personas y 58 campeonatos mundiales.
 
 Los campeonatos son datos reales, extraídos del PDF de la lista de campeonatos mundiales
 (Wikipedia, CC BY-SA); los años de nacimiento y muerte, de Wikidata. `champions.player_id` es un
-vínculo **opcional** con `players` (solo 8 de las 44 personas coinciden): no se inventaron jugadores
-sintéticos para los campeones históricos. Tampoco se guarda el país, porque Wikidata trae varias
+vínculo **opcional** con `players`, resuelto por el identificador de Wikidata y no por nombre
+(solo 8 de las 44 personas están en `players`): no se inventaron jugadores sintéticos para los
+campeones históricos. Tampoco se guarda el país, porque Wikidata trae varias
 nacionalidades históricas por persona y elegir una sería un juicio, no un dato.
 
 > **Evidencia:** insertar el diagrama ER (`docs/data/data-model.md`).

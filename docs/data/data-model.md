@@ -16,7 +16,7 @@ erDiagram
     GAMES ||--o{ MOVES : "contiene"
     CHAMPIONS ||--o{ WORLD_CHAMPIONSHIPS : "gana"
     CHAMPIONS ||--o{ WORLD_CHAMPIONSHIPS : "es rival en"
-    PLAYERS |o--o| CHAMPIONS : "coincide con (opcional)"
+    PLAYERS |o--o| CHAMPIONS : "misma persona (por wikidata_id)"
 
     PLAYERS {
         int player_id PK
@@ -25,6 +25,7 @@ erDiagram
         int birth_year
         text title
         int peak_rating
+        text wikidata_id "único, opcional"
     }
     OPENINGS {
         int opening_id PK
@@ -98,8 +99,10 @@ erDiagram
   de Wikidata (`wikidata_id` permite verificarlos). `world_championships` referencia a
   `champions` dos veces (`winner_id`, `runner_up_id`); un mismo año puede tener varias
   filas en el cisma 1993-2006 (`title_line`: `main`, `classical`, `fide_split`).
-- **`champions.player_id` es un vínculo opcional con `players`**: solo se completa donde el
-  nombre coincide (8 de 44 personas). No se inventaron jugadores sintéticos para los campeones
+- **`champions.player_id` es un vínculo opcional con `players`**, resuelto por **`wikidata_id`**
+  (presente en ambas tablas) y no por nombre: los nombres son texto libre y no hay un estándar
+  (Wikidata llama "Gukesh D" a quien el PDF llama "Gukesh Dommaraju"). Se completa para 8 de 44
+  personas; los 20 jugadores reales de `players` tienen `wikidata_id`, los sintéticos no. No se inventaron jugadores sintéticos para los campeones
   históricos, que ensuciarían los datos de `games`. Tampoco se guarda el país: Wikidata trae
   varias nacionalidades históricas por persona y elegir una sería un juicio, no un dato.
 - El detalle campo por campo, con tipos y valores válidos, está en el

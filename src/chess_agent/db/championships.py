@@ -8,8 +8,12 @@ diferencia del resto del seed, que es sintético). Las preguntas del tipo "¿qui
 
 Relaciones:
     world_championships.winner_id / runner_up_id -> champions.champion_id
-    champions.player_id -> players.player_id   (opcional: solo si la persona está en `players`,
-                                                 es decir, coincide el nombre; hoy 8 de 44)
+    champions.player_id -> players.player_id   (opcional: solo si la persona está en `players`;
+                                                 hoy 8 de 44)
+
+El vínculo entre `champions` y `players` se hace por **identificador de Wikidata**
+(`wikidata_id` en ambas tablas), no por nombre: los nombres son texto libre y no hay un estándar
+(Wikidata llama "Gukesh D" a quien el PDF llama "Gukesh Dommaraju").
 
 No se guarda el país: Wikidata trae varias nacionalidades históricas por persona (p. ej.
 Capablanca figura como "Spain" como país deportivo) y elegir una sería un juicio, no un dato.
@@ -71,6 +75,32 @@ CREATE TABLE world_championships (
 """
 
 _TIE = "Tied match: the champion retained the title."
+
+# Id de Wikidata de los jugadores reales de `players` (seed.REAL_PLAYERS). Cada id se verificó
+# buscando al jugador en Wikidata y comprobando que su año de nacimiento coincide con el del seed.
+# `players.wikidata_id` es NULL para los jugadores sintéticos.
+PLAYER_WIKIDATA_IDS: dict[str, str] = {
+    "Magnus Carlsen": "Q106807",
+    "Hikaru Nakamura": "Q337223",
+    "Fabiano Caruana": "Q367277",
+    "Ian Nepomniachtchi": "Q521817",
+    "Ding Liren": "Q1191198",
+    "Alireza Firouzja": "Q22338182",
+    "Wesley So": "Q147495",
+    "Anish Giri": "Q548946",
+    "Levon Aronian": "Q154586",
+    "Viswanathan Anand": "Q45747",
+    "Vladimir Kramnik": "Q161092",
+    "Maxime Vachier-Lagrave": "Q256923",
+    "Sergey Karjakin": "Q217198",
+    "Judit Polgar": "Q183250",
+    "Hou Yifan": "Q234011",
+    "Teimour Radjabov": "Q211634",
+    "Shakhriyar Mamedyarov": "Q312267",
+    "Richard Rapport": "Q945565",
+    "Gukesh Dommaraju": "Q56026072",
+    "Rameshbabu Praggnanandhaa": "Q26703041",
+}
 
 # Personas (nombre, año de nacimiento, año de muerte o None, id de Wikidata), en orden de primera
 # aparición en CHAMPIONSHIPS. Fuente: Wikidata (propiedades P569 y P570).
@@ -190,11 +220,26 @@ CHAMPIONSHIPS: list[tuple[Any, ...]] = [
 # fmt: on
 
 
+def _prepare_players(cur) -> None:
+    """Garantiza `players.wikidata_id` en bases creadas antes de que existiera la columna.
+
+    Idempotente. En una base nueva la columna ya viene de `schema.sql` y `seed.py` la completa;
+    esto solo agrega la columna y rellena los ids de los jugadores reales (por nombre, una única
+    vez, porque `seed.py` insertó esos nombres desde la misma lista) en bases ya cargadas.
+    """
+    cur.execute("ALTER TABLE players ADD COLUMN IF NOT EXISTS wikidata_id TEXT UNIQUE")
+    cur.executemany(
+        "UPDATE players SET wikidata_id = %s WHERE name = %s AND wikidata_id IS NULL",
+        [(qid, nombre) for nombre, qid in PLAYER_WIKIDATA_IDS.items()],
+    )
+
+
 def replace_all(cur) -> tuple[int, int]:
     """Recrea y carga `champions` y `world_championships` con el cursor dado.
 
     Devuelve `(personas, campeonatos)`. Requiere que `players` exista (por la FK opcional).
     """
+    _prepare_players(cur)
     cur.execute("DROP TABLE IF EXISTS world_championships CASCADE")
     cur.execute("DROP TABLE IF EXISTS champions CASCADE")
     cur.execute(_DDL)
@@ -205,9 +250,10 @@ def replace_all(cur) -> tuple[int, int]:
         " VALUES (%s, %s, %s, %s, %s)",
         [(ids[nombre], nombre, nac, muerte, qid) for nombre, nac, muerte, qid in CHAMPIONS],
     )
-    # Vínculo opcional con `players`: solo donde el nombre coincide (sin inventar jugadores).
+    # Vínculo opcional con `players`, por id de Wikidata (sin inventar jugadores).
     cur.execute(
-        "UPDATE champions c SET player_id = p.player_id FROM players p WHERE p.name = c.name"
+        "UPDATE champions c SET player_id = p.player_id FROM players p"
+        " WHERE p.wikidata_id = c.wikidata_id"
     )
 
     iw, ir = _COLUMNS.index("winner"), _COLUMNS.index("runner_up")

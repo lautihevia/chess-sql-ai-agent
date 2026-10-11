@@ -23,7 +23,10 @@ CREATE TABLE players (
     country     TEXT,
     birth_year  INTEGER,
     title       TEXT    CHECK (title IN ('GM', 'IM', 'FM', 'WGM', 'WIM', 'CM', 'NM')),
-    peak_rating INTEGER
+    peak_rating INTEGER,
+    -- Id de Wikidata (ej. 'Q106807'): identifica a la persona real sin depender de cómo se
+    -- escribe el nombre. NULL en los jugadores sintéticos. Une players con champions.
+    wikidata_id TEXT    UNIQUE
 );
 
 -- ---------------------------------------------------------------------------
@@ -98,8 +101,8 @@ CREATE INDEX idx_player_ratings_player ON player_ratings (player_id);
 -- ---------------------------------------------------------------------------
 -- champions — personas que jugaron un campeonato mundial (datos reales, de Wikidata)
 -- birth_year / death_year: de Wikidata (wikidata_id permite verificarlos); death_year NULL = vivo.
--- player_id: vínculo OPCIONAL con players, solo si el nombre coincide (hoy 8 de 44); el resto
--- queda en NULL en lugar de inventar jugadores sintéticos para los campeones históricos.
+-- player_id: vínculo OPCIONAL con players, por wikidata_id (hoy 8 de 44); el resto queda en
+-- NULL en lugar de inventar jugadores sintéticos para los campeones históricos.
 -- ---------------------------------------------------------------------------
 CREATE TABLE champions (
     champion_id INTEGER PRIMARY KEY,

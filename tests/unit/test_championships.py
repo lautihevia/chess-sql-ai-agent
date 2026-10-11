@@ -6,8 +6,13 @@ import re
 from collections import defaultdict
 from pathlib import Path
 
-from chess_agent.db import championships
-from chess_agent.db.championships import _COLUMNS, CHAMPIONS, CHAMPIONSHIPS
+from chess_agent.db import championships, seed
+from chess_agent.db.championships import (
+    _COLUMNS,
+    CHAMPIONS,
+    CHAMPIONSHIPS,
+    PLAYER_WIKIDATA_IDS,
+)
 
 _IDX = {c: i for i, c in enumerate(_COLUMNS)}
 _LINEAS = {"main", "classical", "fide_split"}
@@ -110,3 +115,40 @@ def test_ddl_del_modulo_coincide_con_schema_sql():
     assert _create_tables(championships._DDL, tablas) == _create_tables(
         _SCHEMA.read_text(encoding="utf-8"), tablas
     )
+
+
+# --- vínculo champions <-> players por wikidata_id ---
+
+_ENLACES_ESPERADOS = {
+    "Magnus Carlsen",
+    "Fabiano Caruana",
+    "Ian Nepomniachtchi",
+    "Ding Liren",
+    "Viswanathan Anand",
+    "Vladimir Kramnik",
+    "Sergey Karjakin",
+    "Gukesh Dommaraju",
+}
+
+
+def test_ids_de_jugadores_son_de_jugadores_reales_del_seed_y_unicos():
+    reales = {nombre for nombre, *_ in seed.REAL_PLAYERS}
+    assert set(PLAYER_WIKIDATA_IDS) == reales
+    assert len(set(PLAYER_WIKIDATA_IDS.values())) == len(PLAYER_WIKIDATA_IDS)
+    assert all(re.fullmatch(r"Q\d+", qid) for qid in PLAYER_WIKIDATA_IDS.values())
+
+
+def test_ids_de_campeones_son_unicos():
+    ids = [qid for *_, qid in CHAMPIONS]
+    assert len(ids) == len(set(ids))
+
+
+def test_enlaces_champions_players_son_los_esperados():
+    # Fija cuáles campeones quedan vinculados a `players` (por wikidata_id): si cambia la lista
+    # de jugadores o de campeones, este test obliga a revisar el vínculo en vez de romperse en
+    # silencio.
+    por_qid = {qid: nombre for nombre, qid in PLAYER_WIKIDATA_IDS.items()}
+    enlazados = {nombre: por_qid[qid] for nombre, _, _, qid in CHAMPIONS if qid in por_qid}
+    assert set(enlazados.values()) == _ENLACES_ESPERADOS
+    # Y el nombre del campeón coincide con el del jugador (misma persona, mismo nombre).
+    assert all(campeon == jugador for campeon, jugador in enlazados.items())
