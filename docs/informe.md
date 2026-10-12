@@ -134,7 +134,7 @@ De la validación real (`docs/quickstart-validation.md`):
 ## 7. Pruebas y evaluación
 
 **Pruebas automatizadas:**
-- **42** pruebas unitarias (validador SQL, seguridad e integridad de los datos de campeonatos),
+- **45** pruebas unitarias (validador SQL, seguridad e integridad de los datos de campeonatos),
   sin costo de API.
 - **14** escenarios BDD (Gherkin) end-to-end: 6 SQL, 4 RAG, 4 routing.
 - Linting con `ruff`.
