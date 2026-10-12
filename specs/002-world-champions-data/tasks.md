@@ -4,7 +4,7 @@ description: "Lista de tareas de implementación"
 
 # Tareas: Datos de campeonatos mundiales de ajedrez
 
-**Entrada**: Documentos de diseño en `/specs/003-world-champions-data/`
+**Entrada**: Documentos de diseño en `/specs/002-world-champions-data/`
 
 **Prerrequisitos**: plan.md, spec.md, research.md, data-model.md
 
@@ -48,7 +48,7 @@ PR #1; las desmarcadas son trabajo abierto.
 ## Fase 5: Documentación
 
 - [x] T016 [P] Actualizar README, diccionario de datos, modelo de datos, mapeo de términos, consultas de referencia, prompt del router, informe y preguntas abiertas
-- [x] T017 [P] Crear esta spec (`specs/003-world-champions-data/`)
+- [x] T017 [P] Crear esta spec (`specs/002-world-champions-data/`)
 
 ## Fase 6: Pendiente / mejoras
 

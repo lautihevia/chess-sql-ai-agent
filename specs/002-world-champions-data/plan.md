@@ -1,8 +1,8 @@
 # Plan de implementación: Datos de campeonatos mundiales de ajedrez
 
-**Rama**: `003-world-champions-data` | **Fecha**: 2026-10-11 | **Spec**: [spec.md](spec.md)
+**Rama**: `002-world-champions-data` | **Fecha**: 2026-10-11 | **Spec**: [spec.md](spec.md)
 
-**Entrada**: Especificación de `specs/003-world-champions-data/spec.md` (retroactiva: describe lo ya implementado)
+**Entrada**: Especificación de `specs/002-world-champions-data/spec.md` (retroactiva: describe lo ya implementado)
 
 ## Resumen
 
@@ -51,7 +51,7 @@ sin inventar datos (Principio I); sin país ni jugadores sintéticos para campeo
 ### Documentación (esta funcionalidad)
 
 ```text
-specs/003-world-champions-data/
+specs/002-world-champions-data/
 ├── plan.md          # Este archivo
 ├── spec.md          # Qué y por qué
 ├── research.md      # Decisiones e investigación

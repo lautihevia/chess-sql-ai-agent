@@ -1,6 +1,6 @@
 # Especificación de funcionalidad: Datos de campeonatos mundiales de ajedrez
 
-**Rama de la funcionalidad**: `003-world-champions-data` (implementada en la rama `feat/world-champions-pdfs`, PR #1)
+**Rama de la funcionalidad**: `002-world-champions-data` (implementada en la rama `feat/world-champions-pdfs`, PR #1)
 
 **Creada**: 2026-10-11
 
