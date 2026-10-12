@@ -16,7 +16,7 @@ Convenciones: PK = clave primaria, FK = clave foránea. Todos los `*_id` son ent
 | `birth_year` | INT | sí | Año de nacimiento | ej. 1990 |
 | `title` | TEXT | sí | Título FIDE | `GM`, `IM`, `FM`, `WGM`, `WIM`, `CM`, `NM`, o `NULL` |
 | `peak_rating` | INT | sí | Máximo rating histórico | ej. 2882 |
-| `fide_id` | INT | sí | FIDE ID de la persona (identificador oficial de la FIDE) | único; `NULL` en los jugadores sintéticos y en Alireza Firouzja (no se pudo verificar); ej. 1503014 |
+| `fide_id` | INT | sí | FIDE ID de la persona (identificador oficial de la FIDE) | único; `NULL` en los jugadores sintéticos; ej. 1503014 |
 
 ## `openings` — aperturas
 
@@ -87,7 +87,7 @@ juicio, no un dato.
 | `name` | TEXT | no | Nombre completo | único, ej. "Bobby Fischer" |
 | `birth_year` | INT | no | Año de nacimiento | ej. 1943 |
 | `death_year` | INT | sí | Año de fallecimiento | `NULL` si vive |
-| `fide_id` | INT | sí | FIDE ID: es la clave que une la persona con `players.fide_id` | único; `NULL` en los 22 campeones sin FIDE ID verificado (los históricos anteriores al sistema de ratings y 3 que la web de la FIDE no confirmó); ej. 1503014 |
+| `fide_id` | INT | sí | FIDE ID: es la clave que une la persona con `players.fide_id` | único; `NULL` en los 22 campeones sin FIDE ID verificado (los históricos anteriores al sistema de ratings y 3 fallecidos cuya ficha la FIDE ya no sirve); ej. 1503014 |
 | `player_id` | INT | sí | Vínculo opcional con `players`, resuelto por `fide_id` | FK → `players`; 8 de 44, `NULL` el resto |
 
 ## `world_championships` — campeonatos mundiales (datos reales, 1886-2024)

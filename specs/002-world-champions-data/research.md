@@ -36,8 +36,12 @@ proceso real, incluidos los errores que se corrigieron por el camino.
 - **Segundo intento**: id de Wikidata. Descartado en la revisión: es un identificador de una
   fuente externa, no del dominio.
 - **Decisión**: FIDE ID. Wikidata (P1440) lo tiene para 20 de 20 jugadores reales y 25 de 44
-  campeones; se contrastó con la ficha de cada uno en `ratings.fide.com`: coinciden 33 de 37
-  (los otros 4 —Firouzja, Spassky, Timman y Korchnoi— no se pudieron confirmar y quedan sin id).
+  campeones; se contrastó con la ficha de cada uno en `ratings.fide.com`: coinciden 34 de 37.
+  Los otros 3 (Spassky, Timman y Korchnoi) son jugadores fallecidos: para el id que trae Wikidata
+  la FIDE responde "No record found please check ID number" y tampoco aparecen en su buscador, así
+  que no se pueden verificar en origen y quedan sin id (en el caso de Timman, la referencia de
+  Wikidata ni siquiera es la FIDE sino Chess.com). Firouzja falló al principio por el User-Agent del
+  script de verificación, no por la web de la FIDE.
   Los 19 campeones históricos no tienen FIDE ID en Wikidata.
 
 ## 5. País de los campeones

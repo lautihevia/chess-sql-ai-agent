@@ -131,13 +131,9 @@ _ENLACES_ESPERADOS = {
 }
 
 
-# Alireza Firouzja: su FIDE ID (de Wikidata) no se pudo contrastar con ratings.fide.com.
-_SIN_FIDE_ID = {"Alireza Firouzja"}
-
-
 def test_fide_ids_de_jugadores_son_de_jugadores_reales_del_seed_y_unicos():
     reales = {nombre for nombre, *_ in seed.REAL_PLAYERS}
-    assert set(PLAYER_FIDE_IDS) == reales - _SIN_FIDE_ID
+    assert set(PLAYER_FIDE_IDS) == reales
     assert len(set(PLAYER_FIDE_IDS.values())) == len(PLAYER_FIDE_IDS)
 
 

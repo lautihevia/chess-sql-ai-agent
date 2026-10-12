@@ -72,15 +72,15 @@ CREATE TABLE world_championships (
 """
 
 # FIDE ID de los jugadores reales de `players` (seed.REAL_PLAYERS). Cada id se tomó de Wikidata
-# (propiedad P1440) y se verificó contra la ficha en ratings.fide.com (el nombre coincide). Los que
-# la web de la FIDE no devolvió quedan fuera (hoy: Alireza Firouzja) y `players.fide_id` es NULL;
-# también es NULL en los jugadores sintéticos.
+# (propiedad P1440) y se verificó contra la ficha en ratings.fide.com (el nombre coincide).
+# `players.fide_id` es NULL en los jugadores sintéticos.
 PLAYER_FIDE_IDS: dict[str, int] = {
     "Magnus Carlsen": 1503014,
     "Hikaru Nakamura": 2016192,
     "Fabiano Caruana": 2020009,
     "Ian Nepomniachtchi": 4168119,
     "Ding Liren": 8603677,
+    "Alireza Firouzja": 12573981,
     "Wesley So": 5202213,
     "Anish Giri": 24116068,
     "Levon Aronian": 13300474,
@@ -99,8 +99,9 @@ PLAYER_FIDE_IDS: dict[str, int] = {
 
 # Personas (nombre, año de nacimiento, año de muerte o None, FIDE ID o None), en orden de primera
 # aparición en CHAMPIONSHIPS. Nacimiento y muerte: Wikidata (propiedades P569 y P570). FIDE ID: solo
-# si Wikidata lo tiene (P1440) y la ficha de ratings.fide.com coincide con el nombre; los campeones
-# históricos anteriores al sistema de ratings no tienen y quedan en None.
+# si Wikidata lo tiene (P1440) y la ficha de ratings.fide.com coincide con el nombre. Quedan en None
+# los campeones históricos anteriores al sistema de ratings y los fallecidos cuya ficha la FIDE ya
+# no sirve ("No record found": Spassky, Timman y Korchnoi), aunque Wikidata tenga un id.
 CHAMPIONS: list[tuple[str, int, int | None, int | None]] = [
     ("Wilhelm Steinitz", 1836, 1900, None),
     ("Johannes Zukertort", 1842, 1888, None),

@@ -18,7 +18,7 @@ Entidades derivadas de la [spec](spec.md). El detalle completo de columnas vive 
 - `win_number` es el n-ésimo título del ganador, sin repetir ni dejar huecos.
 - `death_year` es `NULL` si la persona vive; el nacimiento es anterior a la muerte y al campeonato.
 - `fide_id` es único; `NULL` en los campeones históricos anteriores al sistema de ratings y en los
-  que la web de la FIDE no confirmó (Spassky, Timman, Korchnoi) y en Firouzja (jugador).
+  que la web de la FIDE ya no sirve por estar fallecidos (Spassky, Timman, Korchnoi).
 - `champions.player_id` solo se completa si el FIDE ID coincide con el de un jugador (8 de 44).
 
 ## Fuente de cada dato
