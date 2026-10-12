@@ -119,7 +119,7 @@ def _build_rows(rng: random.Random):
     players = []
     for i, (name, country, birth, title, peak) in enumerate(REAL_PLAYERS, start=1):
         players.append((
-            i, name, country, birth, title, peak, championships.PLAYER_WIKIDATA_IDS.get(name),
+            i, name, country, birth, title, peak, championships.PLAYER_FIDE_IDS.get(name),
         ))
     next_id = len(REAL_PLAYERS) + 1
     for _ in range(10):  # 10 sintéticos -> 30 en total
@@ -131,7 +131,7 @@ def _build_rows(rng: random.Random):
             rng.randint(1985, 2007),
             rng.choice(TITLES),
             rng.randint(2300, 2650),
-            None,  # wikidata_id: los jugadores sintéticos no existen en Wikidata
+            None,  # fide_id: los jugadores sintéticos no tienen FIDE ID
         ))
         next_id += 1
     player_ids = [p[0] for p in players]
@@ -202,7 +202,7 @@ def seed() -> dict[str, int]:
         _apply_schema(cur)
         cur.executemany(
             "INSERT INTO players"
-            " (player_id, name, country, birth_year, title, peak_rating, wikidata_id)"
+            " (player_id, name, country, birth_year, title, peak_rating, fide_id)"
             " VALUES (%s, %s, %s, %s, %s, %s, %s)",
             players,
         )

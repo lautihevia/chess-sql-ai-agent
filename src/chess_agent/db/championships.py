@@ -1,8 +1,8 @@
 """Tablas `champions` y `world_championships`: campeonatos mundiales de ajedrez (1886-2024).
 
 Los campeonatos salen de `data/pdfs/list-of-world-chess-championships.pdf` (artículo de
-Wikipedia, CC BY-SA); las fechas de nacimiento y muerte de cada persona, de Wikidata (CC0), cuyo
-identificador queda en `champions.wikidata_id` para poder verificarlas. Son datos reales (a
+Wikipedia, CC BY-SA); los años de nacimiento y muerte de cada persona, de Wikidata (CC0), y el
+FIDE ID, de Wikidata contrastado con la ficha de ratings.fide.com. Son datos reales (a
 diferencia del resto del seed, que es sintético). Las preguntas del tipo "¿quién fue campeón en
 1972?" son de datos, y el RAG las resolvía mal porque el PDF deja las tablas partidas en líneas.
 
@@ -11,9 +11,9 @@ Relaciones:
     champions.player_id -> players.player_id   (opcional: solo si la persona está en `players`;
                                                  hoy 8 de 44)
 
-El vínculo entre `champions` y `players` se hace por **identificador de Wikidata**
-(`wikidata_id` en ambas tablas), no por nombre: los nombres son texto libre y no hay un estándar
-(Wikidata llama "Gukesh D" a quien el PDF llama "Gukesh Dommaraju").
+El vínculo entre `champions` y `players` se hace por **FIDE ID** (`fide_id` en ambas tablas),
+no por nombre: los nombres son texto libre y no hay un estándar (la FIDE llama "Gukesh D" a quien
+el PDF llama "Gukesh Dommaraju"). Los campeones históricos sin FIDE ID quedan sin vínculo.
 
 No se guarda el país: Wikidata trae varias nacionalidades históricas por persona (p. ej.
 Capablanca figura como "Spain" como país deportivo) y elegir una sería un juicio, no un dato.
@@ -36,7 +36,6 @@ Columnas de cada fila de `CHAMPIONSHIPS` (en orden de `_COLUMNS`):
                   desde 2006), 'classical' = título clásico PCA 1993-2004,
                   'fide_split' = título FIDE durante el cisma 1993-2005
     format        'match' | 'tournament' | 'knockout'
-    notes         aclaraciones (empate que retiene el título, desempate, etc.)
 """
 
 from __future__ import annotations
@@ -47,7 +46,6 @@ from chess_agent.db.client import connect
 
 _COLUMNS = (
     "year", "location", "winner", "win_number", "runner_up", "score", "title_line", "format",
-    "notes",
 )
 
 _DDL = """
@@ -56,7 +54,7 @@ CREATE TABLE champions (
     name        TEXT    NOT NULL UNIQUE,
     birth_year  INTEGER NOT NULL,
     death_year  INTEGER,
-    wikidata_id TEXT    NOT NULL,
+    fide_id     INTEGER UNIQUE,
     player_id   INTEGER REFERENCES players (player_id)
 );
 
@@ -69,168 +67,169 @@ CREATE TABLE world_championships (
     runner_up_id    INTEGER NOT NULL REFERENCES champions (champion_id),
     score           TEXT,
     title_line      TEXT    NOT NULL CHECK (title_line IN ('main', 'classical', 'fide_split')),
-    format          TEXT    NOT NULL CHECK (format IN ('match', 'tournament', 'knockout')),
-    notes           TEXT
+    format          TEXT    NOT NULL CHECK (format IN ('match', 'tournament', 'knockout'))
 );
 """
 
-_TIE = "Tied match: the champion retained the title."
-
-# Id de Wikidata de los jugadores reales de `players` (seed.REAL_PLAYERS). Cada id se verificó
-# buscando al jugador en Wikidata y comprobando que su año de nacimiento coincide con el del seed.
-# `players.wikidata_id` es NULL para los jugadores sintéticos.
-PLAYER_WIKIDATA_IDS: dict[str, str] = {
-    "Magnus Carlsen": "Q106807",
-    "Hikaru Nakamura": "Q337223",
-    "Fabiano Caruana": "Q367277",
-    "Ian Nepomniachtchi": "Q521817",
-    "Ding Liren": "Q1191198",
-    "Alireza Firouzja": "Q22338182",
-    "Wesley So": "Q147495",
-    "Anish Giri": "Q548946",
-    "Levon Aronian": "Q154586",
-    "Viswanathan Anand": "Q45747",
-    "Vladimir Kramnik": "Q161092",
-    "Maxime Vachier-Lagrave": "Q256923",
-    "Sergey Karjakin": "Q217198",
-    "Judit Polgar": "Q183250",
-    "Hou Yifan": "Q234011",
-    "Teimour Radjabov": "Q211634",
-    "Shakhriyar Mamedyarov": "Q312267",
-    "Richard Rapport": "Q945565",
-    "Gukesh Dommaraju": "Q56026072",
-    "Rameshbabu Praggnanandhaa": "Q26703041",
+# FIDE ID de los jugadores reales de `players` (seed.REAL_PLAYERS). Cada id se tomó de Wikidata
+# (propiedad P1440) y se verificó contra la ficha en ratings.fide.com (el nombre coincide). Los que
+# la web de la FIDE no devolvió quedan fuera (hoy: Alireza Firouzja) y `players.fide_id` es NULL;
+# también es NULL en los jugadores sintéticos.
+PLAYER_FIDE_IDS: dict[str, int] = {
+    "Magnus Carlsen": 1503014,
+    "Hikaru Nakamura": 2016192,
+    "Fabiano Caruana": 2020009,
+    "Ian Nepomniachtchi": 4168119,
+    "Ding Liren": 8603677,
+    "Wesley So": 5202213,
+    "Anish Giri": 24116068,
+    "Levon Aronian": 13300474,
+    "Viswanathan Anand": 5000017,
+    "Vladimir Kramnik": 4101588,
+    "Maxime Vachier-Lagrave": 623539,
+    "Sergey Karjakin": 14109603,
+    "Judit Polgar": 700070,
+    "Hou Yifan": 8602980,
+    "Teimour Radjabov": 13400924,
+    "Shakhriyar Mamedyarov": 13401319,
+    "Richard Rapport": 738590,
+    "Gukesh Dommaraju": 46616543,
+    "Rameshbabu Praggnanandhaa": 25059530,
 }
 
-# Personas (nombre, año de nacimiento, año de muerte o None, id de Wikidata), en orden de primera
-# aparición en CHAMPIONSHIPS. Fuente: Wikidata (propiedades P569 y P570).
-CHAMPIONS: list[tuple[str, int, int | None, str]] = [
-    ("Wilhelm Steinitz", 1836, 1900, "Q102648"),
-    ("Johannes Zukertort", 1842, 1888, "Q60182"),
-    ("Mikhail Chigorin", 1850, 1908, "Q298286"),
-    ("Isidor Gunsberg", 1854, 1930, "Q357796"),
-    ("Emanuel Lasker", 1868, 1941, "Q57095"),
-    ("Frank Marshall", 1877, 1944, "Q312814"),
-    ("Siegbert Tarrasch", 1862, 1934, "Q76558"),
-    ("Carl Schlechter", 1874, 1918, "Q320017"),
-    ("Dawid Janowski", 1868, 1927, "Q378839"),
-    ("José Raúl Capablanca", 1888, 1942, "Q160702"),
-    ("Alexander Alekhine", 1892, 1946, "Q131374"),
-    ("Efim Bogoljubow", 1889, 1952, "Q57310"),
-    ("Max Euwe", 1901, 1981, "Q173714"),
-    ("Mikhail Botvinnik", 1911, 1995, "Q178865"),
-    ("Vasily Smyslov", 1921, 2010, "Q104148"),
-    ("David Bronstein", 1924, 2006, "Q312908"),
-    ("Mikhail Tal", 1936, 1992, "Q102664"),
-    ("Tigran Petrosian", 1929, 1984, "Q180636"),
-    ("Boris Spassky", 1937, 2025, "Q177310"),
-    ("Bobby Fischer", 1943, 2008, "Q41314"),
-    ("Anatoly Karpov", 1951, None, "Q131674"),
-    ("Viktor Korchnoi", 1931, 2016, "Q212889"),
-    ("Garry Kasparov", 1963, None, "Q28614"),
-    ("Nigel Short", 1965, None, "Q313778"),
-    ("Viswanathan Anand", 1969, None, "Q45747"),
-    ("Vladimir Kramnik", 1975, None, "Q161092"),
-    ("Peter Leko", 1979, None, "Q210922"),
-    ("Jan Timman", 1951, 2026, "Q139438"),
-    ("Gata Kamsky", 1974, None, "Q315155"),
-    ("Alexander Khalifman", 1966, None, "Q106374"),
-    ("Vladimir Akopian", 1971, None, "Q380839"),
-    ("Alexei Shirov", 1972, None, "Q214713"),
-    ("Ruslan Ponomariov", 1983, None, "Q207723"),
-    ("Vasyl Ivanchuk", 1969, None, "Q208229"),
-    ("Rustam Kasimdzhanov", 1979, None, "Q489015"),
-    ("Michael Adams", 1971, None, "Q299636"),
-    ("Veselin Topalov", 1975, None, "Q172798"),
-    ("Boris Gelfand", 1968, None, "Q486778"),
-    ("Magnus Carlsen", 1990, None, "Q106807"),
-    ("Sergey Karjakin", 1990, None, "Q217198"),
-    ("Fabiano Caruana", 1992, None, "Q367277"),
-    ("Ian Nepomniachtchi", 1990, None, "Q521817"),
-    ("Ding Liren", 1992, None, "Q1191198"),
-    ("Gukesh Dommaraju", 2006, None, "Q56026072"),
+# Personas (nombre, año de nacimiento, año de muerte o None, FIDE ID o None), en orden de primera
+# aparición en CHAMPIONSHIPS. Nacimiento y muerte: Wikidata (propiedades P569 y P570). FIDE ID: solo
+# si Wikidata lo tiene (P1440) y la ficha de ratings.fide.com coincide con el nombre; los campeones
+# históricos anteriores al sistema de ratings no tienen y quedan en None.
+CHAMPIONS: list[tuple[str, int, int | None, int | None]] = [
+    ("Wilhelm Steinitz", 1836, 1900, None),
+    ("Johannes Zukertort", 1842, 1888, None),
+    ("Mikhail Chigorin", 1850, 1908, None),
+    ("Isidor Gunsberg", 1854, 1930, None),
+    ("Emanuel Lasker", 1868, 1941, None),
+    ("Frank Marshall", 1877, 1944, None),
+    ("Siegbert Tarrasch", 1862, 1934, None),
+    ("Carl Schlechter", 1874, 1918, None),
+    ("Dawid Janowski", 1868, 1927, None),
+    ("José Raúl Capablanca", 1888, 1942, None),
+    ("Alexander Alekhine", 1892, 1946, None),
+    ("Efim Bogoljubow", 1889, 1952, None),
+    ("Max Euwe", 1901, 1981, None),
+    ("Mikhail Botvinnik", 1911, 1995, None),
+    ("Vasily Smyslov", 1921, 2010, None),
+    ("David Bronstein", 1924, 2006, None),
+    ("Mikhail Tal", 1936, 1992, None),
+    ("Tigran Petrosian", 1929, 1984, None),
+    ("Boris Spassky", 1937, 2025, None),
+    ("Bobby Fischer", 1943, 2008, None),
+    ("Anatoly Karpov", 1951, None, 4100026),
+    ("Viktor Korchnoi", 1931, 2016, None),
+    ("Garry Kasparov", 1963, None, 4100018),
+    ("Nigel Short", 1965, None, 400025),
+    ("Viswanathan Anand", 1969, None, 5000017),
+    ("Vladimir Kramnik", 1975, None, 4101588),
+    ("Peter Leko", 1979, None, 703303),
+    ("Jan Timman", 1951, 2026, None),
+    ("Gata Kamsky", 1974, None, 2000024),
+    ("Alexander Khalifman", 1966, None, 4100115),
+    ("Vladimir Akopian", 1971, None, 13300032),
+    ("Alexei Shirov", 1972, None, 2209390),
+    ("Ruslan Ponomariov", 1983, None, 14103320),
+    ("Vasyl Ivanchuk", 1969, None, 14100010),
+    ("Rustam Kasimdzhanov", 1979, None, 14200244),
+    ("Michael Adams", 1971, None, 400041),
+    ("Veselin Topalov", 1975, None, 2900084),
+    ("Boris Gelfand", 1968, None, 2805677),
+    ("Magnus Carlsen", 1990, None, 1503014),
+    ("Sergey Karjakin", 1990, None, 14109603),
+    ("Fabiano Caruana", 1992, None, 2020009),
+    ("Ian Nepomniachtchi", 1990, None, 4168119),
+    ("Ding Liren", 1992, None, 8603677),
+    ("Gukesh Dommaraju", 2006, None, 46616543),
 ]
 
 # fmt: off
 CHAMPIONSHIPS: list[tuple[Any, ...]] = [
     # --- Matches organizados en forma privada (1886-1946) ---
-    (1886, "New York City, St. Louis, New Orleans", "Wilhelm Steinitz", 1, "Johannes Zukertort", "12½–7½", "main", "match", "First official World Championship."),
-    (1889, "Havana", "Wilhelm Steinitz", 2, "Mikhail Chigorin", "10½–6½", "main", "match", None),
-    (1890, "New York City", "Wilhelm Steinitz", 3, "Isidor Gunsberg", "10½–8½", "main", "match", "Played 1890-1891."),
-    (1892, "Havana", "Wilhelm Steinitz", 4, "Mikhail Chigorin", "12½–10½", "main", "match", None),
-    (1894, "New York City, Philadelphia, Montréal", "Emanuel Lasker", 1, "Wilhelm Steinitz", "12–7", "main", "match", "Lasker became champion."),
-    (1896, "Moscow", "Emanuel Lasker", 2, "Wilhelm Steinitz", "12½–4½", "main", "match", "Played 1896-1897."),
-    (1907, "New York City, Philadelphia, Washington, Baltimore, Chicago, Memphis", "Emanuel Lasker", 3, "Frank Marshall", "11½–3½", "main", "match", None),
-    (1908, "Düsseldorf, Munich", "Emanuel Lasker", 4, "Siegbert Tarrasch", "10½–5½", "main", "match", None),
-    (1910, "Vienna, Berlin", "Emanuel Lasker", 5, "Carl Schlechter", "5–5", "main", "match", "Played Jan-Feb 1910. " + _TIE),
-    (1910, "Berlin", "Emanuel Lasker", 6, "Dawid Janowski", "9½–1½", "main", "match", "Played Nov-Dec 1910."),
-    (1921, "Havana", "José Raúl Capablanca", 1, "Emanuel Lasker", "9–5", "main", "match", "Capablanca became champion."),
-    (1927, "Buenos Aires", "Alexander Alekhine", 1, "José Raúl Capablanca", "18½–15½", "main", "match", "Alekhine became champion."),
-    (1929, "Wiesbaden, Heidelberg, Berlin, The Hague, Rotterdam, Amsterdam", "Alexander Alekhine", 2, "Efim Bogoljubow", "15½–9½", "main", "match", None),
-    (1934, "12 cities in Germany", "Alexander Alekhine", 3, "Efim Bogoljubow", "15½–10½", "main", "match", None),
-    (1935, "12 cities in the Netherlands", "Max Euwe", 1, "Alexander Alekhine", "15½–14½", "main", "match", "Euwe became champion."),
-    (1937, "9 cities in the Netherlands", "Alexander Alekhine", 4, "Max Euwe", "15½–9½", "main", "match", "Alekhine regained the title. The title was vacant from 1946 (death of Alekhine) to 1948."),
+    (1886, "New York City, St. Louis, New Orleans", "Wilhelm Steinitz", 1, "Johannes Zukertort", "12½–7½", "main", "match"),
+    (1889, "Havana", "Wilhelm Steinitz", 2, "Mikhail Chigorin", "10½–6½", "main", "match"),
+    (1890, "New York City", "Wilhelm Steinitz", 3, "Isidor Gunsberg", "10½–8½", "main", "match"),
+    (1892, "Havana", "Wilhelm Steinitz", 4, "Mikhail Chigorin", "12½–10½", "main", "match"),
+    (1894, "New York City, Philadelphia, Montréal", "Emanuel Lasker", 1, "Wilhelm Steinitz", "12–7", "main", "match"),
+    (1896, "Moscow", "Emanuel Lasker", 2, "Wilhelm Steinitz", "12½–4½", "main", "match"),
+    (1907, "New York City, Philadelphia, Washington, Baltimore, Chicago, Memphis", "Emanuel Lasker", 3, "Frank Marshall", "11½–3½", "main", "match"),
+    (1908, "Düsseldorf, Munich", "Emanuel Lasker", 4, "Siegbert Tarrasch", "10½–5½", "main", "match"),
+    (1910, "Vienna, Berlin", "Emanuel Lasker", 5, "Carl Schlechter", "5–5", "main", "match"),
+    (1910, "Berlin", "Emanuel Lasker", 6, "Dawid Janowski", "9½–1½", "main", "match"),
+    (1921, "Havana", "José Raúl Capablanca", 1, "Emanuel Lasker", "9–5", "main", "match"),
+    (1927, "Buenos Aires", "Alexander Alekhine", 1, "José Raúl Capablanca", "18½–15½", "main", "match"),
+    (1929, "Wiesbaden, Heidelberg, Berlin, The Hague, Rotterdam, Amsterdam", "Alexander Alekhine", 2, "Efim Bogoljubow", "15½–9½", "main", "match"),
+    (1934, "12 cities in Germany", "Alexander Alekhine", 3, "Efim Bogoljubow", "15½–10½", "main", "match"),
+    (1935, "12 cities in the Netherlands", "Max Euwe", 1, "Alexander Alekhine", "15½–14½", "main", "match"),
+    (1937, "9 cities in the Netherlands", "Alexander Alekhine", 4, "Max Euwe", "15½–9½", "main", "match"),
     # --- Campeonatos FIDE (1948-1990) ---
-    (1948, "The Hague, Moscow", "Mikhail Botvinnik", 1, "Vasily Smyslov", "14–6", "main", "tournament", "Five-player quintuple round-robin tournament. First FIDE World Champion."),
-    (1951, "Moscow", "Mikhail Botvinnik", 2, "David Bronstein", "12–12", "main", "match", _TIE),
-    (1954, "Moscow", "Mikhail Botvinnik", 3, "Vasily Smyslov", "12–12", "main", "match", _TIE),
-    (1957, "Moscow", "Vasily Smyslov", 1, "Mikhail Botvinnik", "12½–9½", "main", "match", "Smyslov became champion."),
-    (1958, "Moscow", "Mikhail Botvinnik", 4, "Vasily Smyslov", "12½–10½", "main", "match", "Rematch: Botvinnik regained the title."),
-    (1960, "Moscow", "Mikhail Tal", 1, "Mikhail Botvinnik", "12½–8½", "main", "match", "Tal became champion."),
-    (1961, "Moscow", "Mikhail Botvinnik", 5, "Mikhail Tal", "13–8", "main", "match", "Rematch: Botvinnik regained the title."),
-    (1963, "Moscow", "Tigran Petrosian", 1, "Mikhail Botvinnik", "12½–9½", "main", "match", "Petrosian became champion."),
-    (1966, "Moscow", "Tigran Petrosian", 2, "Boris Spassky", "12½–11½", "main", "match", None),
-    (1969, "Moscow", "Boris Spassky", 1, "Tigran Petrosian", "12½–10½", "main", "match", "Spassky became champion."),
-    (1972, "Reykjavík", "Bobby Fischer", 1, "Boris Spassky", "12½–8½", "main", "match", "Fischer became champion; the only non-Soviet winner between 1948 and 1991."),
-    (1975, "Manila", "Anatoly Karpov", 1, "Bobby Fischer", None, "main", "match", "No match was played: Fischer forfeited the title and FIDE declared Karpov champion by default."),
-    (1978, "Baguio", "Anatoly Karpov", 2, "Viktor Korchnoi", "16½–15½", "main", "match", "First to 6 wins."),
-    (1981, "Merano", "Anatoly Karpov", 3, "Viktor Korchnoi", "11–7", "main", "match", "First to 6 wins."),
-    (1985, "Moscow", "Garry Kasparov", 1, "Anatoly Karpov", "13–11", "main", "match", "Kasparov became champion. Replaced the 1984-85 Karpov-Kasparov match, which FIDE ended with no result after 48 games."),
-    (1986, "London, Leningrad", "Garry Kasparov", 2, "Anatoly Karpov", "12½–11½", "main", "match", None),
-    (1987, "Seville", "Garry Kasparov", 3, "Anatoly Karpov", "12–12", "main", "match", _TIE),
-    (1990, "New York City, Lyon", "Garry Kasparov", 4, "Anatoly Karpov", "12½–11½", "main", "match", None),
+    (1948, "The Hague, Moscow", "Mikhail Botvinnik", 1, "Vasily Smyslov", "14–6", "main", "tournament"),
+    (1951, "Moscow", "Mikhail Botvinnik", 2, "David Bronstein", "12–12", "main", "match"),
+    (1954, "Moscow", "Mikhail Botvinnik", 3, "Vasily Smyslov", "12–12", "main", "match"),
+    (1957, "Moscow", "Vasily Smyslov", 1, "Mikhail Botvinnik", "12½–9½", "main", "match"),
+    (1958, "Moscow", "Mikhail Botvinnik", 4, "Vasily Smyslov", "12½–10½", "main", "match"),
+    (1960, "Moscow", "Mikhail Tal", 1, "Mikhail Botvinnik", "12½–8½", "main", "match"),
+    (1961, "Moscow", "Mikhail Botvinnik", 5, "Mikhail Tal", "13–8", "main", "match"),
+    (1963, "Moscow", "Tigran Petrosian", 1, "Mikhail Botvinnik", "12½–9½", "main", "match"),
+    (1966, "Moscow", "Tigran Petrosian", 2, "Boris Spassky", "12½–11½", "main", "match"),
+    (1969, "Moscow", "Boris Spassky", 1, "Tigran Petrosian", "12½–10½", "main", "match"),
+    (1972, "Reykjavík", "Bobby Fischer", 1, "Boris Spassky", "12½–8½", "main", "match"),
+    (1975, "Manila", "Anatoly Karpov", 1, "Bobby Fischer", None, "main", "match"),
+    (1978, "Baguio", "Anatoly Karpov", 2, "Viktor Korchnoi", "16½–15½", "main", "match"),
+    (1981, "Merano", "Anatoly Karpov", 3, "Viktor Korchnoi", "11–7", "main", "match"),
+    (1985, "Moscow", "Garry Kasparov", 1, "Anatoly Karpov", "13–11", "main", "match"),
+    (1986, "London, Leningrad", "Garry Kasparov", 2, "Anatoly Karpov", "12½–11½", "main", "match"),
+    (1987, "Seville", "Garry Kasparov", 3, "Anatoly Karpov", "12–12", "main", "match"),
+    (1990, "New York City, Lyon", "Garry Kasparov", 4, "Anatoly Karpov", "12½–11½", "main", "match"),
     # --- Cisma 1993-2006: campeonato clásico (PCA) ---
-    (1993, "London", "Garry Kasparov", 5, "Nigel Short", "12½–7½", "classical", "match", "Professional Chess Association (PCA) title, created after Kasparov and Short split from FIDE."),
-    (1995, "New York City", "Garry Kasparov", 6, "Viswanathan Anand", "10½–7½", "classical", "match", "PCA title."),
-    (2000, "London", "Vladimir Kramnik", 1, "Garry Kasparov", "8½–6½", "classical", "match", "Kramnik became Classical champion."),
-    (2004, "Brissago", "Vladimir Kramnik", 2, "Peter Leko", "7–7", "classical", "match", "Classical title. " + _TIE),
+    (1993, "London", "Garry Kasparov", 5, "Nigel Short", "12½–7½", "classical", "match"),
+    (1995, "New York City", "Garry Kasparov", 6, "Viswanathan Anand", "10½–7½", "classical", "match"),
+    (2000, "London", "Vladimir Kramnik", 1, "Garry Kasparov", "8½–6½", "classical", "match"),
+    (2004, "Brissago", "Vladimir Kramnik", 2, "Peter Leko", "7–7", "classical", "match"),
     # --- Cisma 1993-2006: campeonato FIDE ---
-    (1993, "Zwolle, Arnhem, Amsterdam, Jakarta", "Anatoly Karpov", 4, "Jan Timman", "12½–8½", "fide_split", "match", "FIDE title; FIDE stripped Kasparov of the title."),
-    (1996, "Elista", "Anatoly Karpov", 5, "Gata Kamsky", "10½–7½", "fide_split", "match", "FIDE title."),
-    (1998, "Lausanne", "Anatoly Karpov", 6, "Viswanathan Anand", "3–3 (tiebreak 2–0)", "fide_split", "knockout", "FIDE title. 100-player single-elimination tournament; Karpov was seeded directly into the final."),
-    (1999, "Las Vegas", "Alexander Khalifman", 1, "Vladimir Akopian", "3½–2½", "fide_split", "knockout", "FIDE title. Final score; aggregate over all rounds 18½–11½."),
-    (2000, "New Delhi, Tehran", "Viswanathan Anand", 1, "Alexei Shirov", "3½–½", "fide_split", "knockout", "FIDE title. Final score; aggregate over all rounds 14–6."),
-    (2002, "Moscow", "Ruslan Ponomariov", 1, "Vasyl Ivanchuk", "4½–2½", "fide_split", "knockout", "FIDE title. 128-player single-elimination tournament; final score, aggregate 19–9."),
-    (2004, "Tripoli", "Rustam Kasimdzhanov", 1, "Michael Adams", "4½–3½", "fide_split", "knockout", "FIDE title. Final score; aggregate over all rounds 20–10."),
-    (2005, "Potrero de los Funes", "Veselin Topalov", 1, "Viswanathan Anand", "10–4", "fide_split", "tournament", "FIDE title. Double round-robin tournament with 8 players."),
+    (1993, "Zwolle, Arnhem, Amsterdam, Jakarta", "Anatoly Karpov", 4, "Jan Timman", "12½–8½", "fide_split", "match"),
+    (1996, "Elista", "Anatoly Karpov", 5, "Gata Kamsky", "10½–7½", "fide_split", "match"),
+    (1998, "Lausanne", "Anatoly Karpov", 6, "Viswanathan Anand", "3–3 (tiebreak 2–0)", "fide_split", "knockout"),
+    (1999, "Las Vegas", "Alexander Khalifman", 1, "Vladimir Akopian", "3½–2½", "fide_split", "knockout"),
+    (2000, "New Delhi, Tehran", "Viswanathan Anand", 1, "Alexei Shirov", "3½–½", "fide_split", "knockout"),
+    (2002, "Moscow", "Ruslan Ponomariov", 1, "Vasyl Ivanchuk", "4½–2½", "fide_split", "knockout"),
+    (2004, "Tripoli", "Rustam Kasimdzhanov", 1, "Michael Adams", "4½–3½", "fide_split", "knockout"),
+    (2005, "Potrero de los Funes", "Veselin Topalov", 1, "Viswanathan Anand", "10–4", "fide_split", "tournament"),
     # --- Título reunificado (2006 en adelante) ---
-    (2006, "Elista", "Vladimir Kramnik", 3, "Veselin Topalov", "6–6 (tiebreak 2½–1½)", "main", "match", "Reunification match between the Classical and FIDE champions."),
-    (2007, "Mexico City", "Viswanathan Anand", 2, "Vladimir Kramnik", "9–5", "main", "tournament", "Double round-robin tournament with 8 players."),
-    (2008, "Bonn", "Viswanathan Anand", 3, "Vladimir Kramnik", "6½–4½", "main", "match", None),
-    (2010, "Sofia", "Viswanathan Anand", 4, "Veselin Topalov", "6½–5½", "main", "match", None),
-    (2012, "Moscow", "Viswanathan Anand", 5, "Boris Gelfand", "6–6 (tiebreak 2½–1½)", "main", "match", None),
-    (2013, "Chennai", "Magnus Carlsen", 1, "Viswanathan Anand", "6½–3½", "main", "match", "Carlsen became champion."),
-    (2014, "Sochi", "Magnus Carlsen", 2, "Viswanathan Anand", "6½–4½", "main", "match", None),
-    (2016, "New York City", "Magnus Carlsen", 3, "Sergey Karjakin", "6–6 (tiebreak 3–1)", "main", "match", None),
-    (2018, "London", "Magnus Carlsen", 4, "Fabiano Caruana", "6–6 (tiebreak 3–0)", "main", "match", "All 12 classical games were draws."),
-    (2021, "Dubai", "Magnus Carlsen", 5, "Ian Nepomniachtchi", "7½–3½", "main", "match", "Carlsen declined to defend the title in 2023."),
-    (2023, "Astana", "Ding Liren", 1, "Ian Nepomniachtchi", "7–7 (tiebreak 2½–1½)", "main", "match", "Ding Liren became champion; Carlsen did not defend the title."),
-    (2024, "Singapore", "Gukesh Dommaraju", 1, "Ding Liren", "7½–6½", "main", "match", "Gukesh became champion at age 18."),
+    (2006, "Elista", "Vladimir Kramnik", 3, "Veselin Topalov", "6–6 (tiebreak 2½–1½)", "main", "match"),
+    (2007, "Mexico City", "Viswanathan Anand", 2, "Vladimir Kramnik", "9–5", "main", "tournament"),
+    (2008, "Bonn", "Viswanathan Anand", 3, "Vladimir Kramnik", "6½–4½", "main", "match"),
+    (2010, "Sofia", "Viswanathan Anand", 4, "Veselin Topalov", "6½–5½", "main", "match"),
+    (2012, "Moscow", "Viswanathan Anand", 5, "Boris Gelfand", "6–6 (tiebreak 2½–1½)", "main", "match"),
+    (2013, "Chennai", "Magnus Carlsen", 1, "Viswanathan Anand", "6½–3½", "main", "match"),
+    (2014, "Sochi", "Magnus Carlsen", 2, "Viswanathan Anand", "6½–4½", "main", "match"),
+    (2016, "New York City", "Magnus Carlsen", 3, "Sergey Karjakin", "6–6 (tiebreak 3–1)", "main", "match"),
+    (2018, "London", "Magnus Carlsen", 4, "Fabiano Caruana", "6–6 (tiebreak 3–0)", "main", "match"),
+    (2021, "Dubai", "Magnus Carlsen", 5, "Ian Nepomniachtchi", "7½–3½", "main", "match"),
+    (2023, "Astana", "Ding Liren", 1, "Ian Nepomniachtchi", "7–7 (tiebreak 2½–1½)", "main", "match"),
+    (2024, "Singapore", "Gukesh Dommaraju", 1, "Ding Liren", "7½–6½", "main", "match"),
 ]
 # fmt: on
 
 
 def _prepare_players(cur) -> None:
-    """Garantiza `players.wikidata_id` en bases creadas antes de que existiera la columna.
+    """Garantiza `players.fide_id` en bases creadas antes de que existiera la columna.
 
     Idempotente. En una base nueva la columna ya viene de `schema.sql` y `seed.py` la completa;
     esto solo agrega la columna y rellena los ids de los jugadores reales (por nombre, una única
-    vez, porque `seed.py` insertó esos nombres desde la misma lista) en bases ya cargadas.
+    vez, porque `seed.py` insertó esos nombres desde la misma lista) en bases ya cargadas, y quita
+    la columna `wikidata_id` de una versión anterior.
     """
-    cur.execute("ALTER TABLE players ADD COLUMN IF NOT EXISTS wikidata_id TEXT UNIQUE")
+    cur.execute("ALTER TABLE players DROP COLUMN IF EXISTS wikidata_id")
+    cur.execute("ALTER TABLE players ADD COLUMN IF NOT EXISTS fide_id INTEGER UNIQUE")
     cur.executemany(
-        "UPDATE players SET wikidata_id = %s WHERE name = %s AND wikidata_id IS NULL",
-        [(qid, nombre) for nombre, qid in PLAYER_WIKIDATA_IDS.items()],
+        "UPDATE players SET fide_id = %s WHERE name = %s AND fide_id IS NULL",
+        [(fide, nombre) for nombre, fide in PLAYER_FIDE_IDS.items()],
     )
 
 
@@ -246,14 +245,14 @@ def replace_all(cur) -> tuple[int, int]:
 
     ids = {nombre: i for i, (nombre, *_) in enumerate(CHAMPIONS, start=1)}
     cur.executemany(
-        "INSERT INTO champions (champion_id, name, birth_year, death_year, wikidata_id)"
+        "INSERT INTO champions (champion_id, name, birth_year, death_year, fide_id)"
         " VALUES (%s, %s, %s, %s, %s)",
-        [(ids[nombre], nombre, nac, muerte, qid) for nombre, nac, muerte, qid in CHAMPIONS],
+        [(ids[nombre], nombre, nac, muerte, fide) for nombre, nac, muerte, fide in CHAMPIONS],
     )
-    # Vínculo opcional con `players`, por id de Wikidata (sin inventar jugadores).
+    # Vínculo opcional con `players`, por FIDE ID (sin inventar jugadores).
     cur.execute(
         "UPDATE champions c SET player_id = p.player_id FROM players p"
-        " WHERE p.wikidata_id = c.wikidata_id"
+        " WHERE p.fide_id = c.fide_id"
     )
 
     iw, ir = _COLUMNS.index("winner"), _COLUMNS.index("runner_up")
@@ -264,8 +263,8 @@ def replace_all(cur) -> tuple[int, int]:
         filas.append((n, *fila))
     cur.executemany(
         "INSERT INTO world_championships (championship_id, year, location, winner_id,"
-        " win_number, runner_up_id, score, title_line, format, notes)"
-        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+        " win_number, runner_up_id, score, title_line, format)"
+        " VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
         filas,
     )
     return len(CHAMPIONS), len(CHAMPIONSHIPS)

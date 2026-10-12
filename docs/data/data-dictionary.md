@@ -16,7 +16,7 @@ Convenciones: PK = clave primaria, FK = clave foránea. Todos los `*_id` son ent
 | `birth_year` | INT | sí | Año de nacimiento | ej. 1990 |
 | `title` | TEXT | sí | Título FIDE | `GM`, `IM`, `FM`, `WGM`, `WIM`, `CM`, `NM`, o `NULL` |
 | `peak_rating` | INT | sí | Máximo rating histórico | ej. 2882 |
-| `wikidata_id` | TEXT | sí | Identificador de la persona en Wikidata | único; `NULL` en los jugadores sintéticos; ej. "Q106807" |
+| `fide_id` | INT | sí | FIDE ID de la persona (identificador oficial de la FIDE) | único; `NULL` en los jugadores sintéticos y en Alireza Firouzja (no se pudo verificar); ej. 1503014 |
 
 ## `openings` — aperturas
 
@@ -74,10 +74,12 @@ Convenciones: PK = clave primaria, FK = clave foránea. Todos los `*_id` son ent
 
 ## `champions` — personas que jugaron un campeonato mundial (datos reales)
 
-Una fila por persona (campeones y retadores, 44). Datos reales: los años salen de Wikidata
-(CC0) y `wikidata_id` permite verificarlos. **No tiene país**: Wikidata trae varias nacionalidades
-históricas por persona (p. ej. Capablanca figura como "Spain" como país deportivo) y elegir una
-sería un juicio, no un dato.
+Una fila por persona (campeones y retadores, 44). Datos reales. **Fuentes:** los años de
+nacimiento y muerte salen de **Wikidata** (la base de datos estructurada de Wikimedia, licencia
+CC0; no del texto de Wikipedia) y el `fide_id`, de Wikidata contrastado con la ficha de cada
+jugador en `ratings.fide.com`. **No tiene país**: Wikidata trae varias nacionalidades históricas
+por persona (p. ej. Capablanca figura como "Spain" como país deportivo) y elegir una sería un
+juicio, no un dato.
 
 | Columna | Tipo | Nulo | Descripción | Valores válidos |
 |---|---|---|---|---|
@@ -85,8 +87,8 @@ sería un juicio, no un dato.
 | `name` | TEXT | no | Nombre completo | único, ej. "Bobby Fischer" |
 | `birth_year` | INT | no | Año de nacimiento | ej. 1943 |
 | `death_year` | INT | sí | Año de fallecimiento | `NULL` si vive |
-| `wikidata_id` | TEXT | no | Identificador en Wikidata: permite verificar los años y es la clave que une la persona con `players.wikidata_id` | ej. "Q41314" |
-| `player_id` | INT | sí | Vínculo opcional con `players`, resuelto por `wikidata_id` | FK → `players`; 8 de 44, `NULL` el resto |
+| `fide_id` | INT | sí | FIDE ID: es la clave que une la persona con `players.fide_id` | único; `NULL` en los 22 campeones sin FIDE ID verificado (los históricos anteriores al sistema de ratings y 3 que la web de la FIDE no confirmó); ej. 1503014 |
+| `player_id` | INT | sí | Vínculo opcional con `players`, resuelto por `fide_id` | FK → `players`; 8 de 44, `NULL` el resto |
 
 ## `world_championships` — campeonatos mundiales (datos reales, 1886-2024)
 
@@ -104,7 +106,6 @@ sintético. Se cargan junto con `champions` con `uv run python -m chess_agent.db
 | `score` | TEXT | sí | Marcador, ganador primero | ej. "12½–8½"; `NULL` en 1975 (Fischer no jugó) |
 | `title_line` | TEXT | no | Linaje del título | `main`, `classical` (PCA 1993-2004), `fide_split` (FIDE 1993-2005) |
 | `format` | TEXT | no | Formato | `match`, `tournament`, `knockout` |
-| `notes` | TEXT | sí | Aclaraciones | ej. empate que retiene el título |
 
 Para los nombres hay que unir con `champions` (dos veces si se quieren ganador y rival). Para
 "campeón en el año X" hay que usar `title_line = 'main'` y tomar el último campeonato con

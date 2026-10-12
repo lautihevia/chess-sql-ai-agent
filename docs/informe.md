@@ -35,7 +35,7 @@ para reproducibilidad) y 2 con datos **reales** de los campeonatos mundiales de 
 | `games` | Partidas (blancas, negras, apertura, resultado, nº jugadas) | PK `game_id`, FKs |
 | `moves` | Jugadas, **una fila por media jugada (ply)** | PK `move_id`, FK `game_id` (indexada) |
 | `player_ratings` | Historial de rating por jugador y fecha | PK `rating_id`, FK `player_id` |
-| `champions` | Personas que jugaron un campeonato mundial (nombre, año de nacimiento y muerte, id de Wikidata) | PK `champion_id`, FK opcional `player_id` |
+| `champions` | Personas que jugaron un campeonato mundial (nombre, año de nacimiento y muerte, FIDE ID) | PK `champion_id`, FK opcional `player_id` |
 | `world_championships` | Campeonatos mundiales 1886-2024 (año, sede, ganador, rival, marcador, línea del título) | PK `championship_id`, FKs `winner_id`, `runner_up_id` |
 
 Restricciones de integridad clave: `result ∈ {1-0, 0-1, 1/2-1/2}`, `color ∈ {white, black}`,
@@ -45,11 +45,13 @@ en `moves.game_id` (ADR 0003) para reconstruir partidas de forma eficiente. Vol�
 personas y 58 campeonatos mundiales.
 
 Los campeonatos son datos reales, extraídos del PDF de la lista de campeonatos mundiales
-(Wikipedia, CC BY-SA); los años de nacimiento y muerte, de Wikidata. `champions.player_id` es un
-vínculo **opcional** con `players`, resuelto por el identificador de Wikidata y no por nombre
-(solo 8 de las 44 personas están en `players`): no se inventaron jugadores sintéticos para los
-campeones históricos. Tampoco se guarda el país, porque Wikidata trae varias
-nacionalidades históricas por persona y elegir una sería un juicio, no un dato.
+(Wikipedia, CC BY-SA); los años de nacimiento y muerte, de Wikidata (la base de datos
+estructurada de Wikimedia, CC0). `champions.player_id` es un vínculo **opcional** con `players`,
+resuelto por **FIDE ID** y no por nombre (solo 8 de las 44 personas están en `players`); cada FIDE
+ID se verificó contra la ficha de `ratings.fide.com` y los campeones históricos anteriores al
+sistema de ratings no lo tienen. No se inventaron jugadores sintéticos para los campeones
+históricos. Tampoco se guarda el país, porque Wikidata trae varias nacionalidades históricas por
+persona y elegir una sería un juicio, no un dato.
 
 > **Evidencia:** insertar el diagrama ER (`docs/data/data-model.md`).
 

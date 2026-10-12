@@ -24,9 +24,9 @@ CREATE TABLE players (
     birth_year  INTEGER,
     title       TEXT    CHECK (title IN ('GM', 'IM', 'FM', 'WGM', 'WIM', 'CM', 'NM')),
     peak_rating INTEGER,
-    -- Id de Wikidata (ej. 'Q106807'): identifica a la persona real sin depender de cómo se
-    -- escribe el nombre. NULL en los jugadores sintéticos. Une players con champions.
-    wikidata_id TEXT    UNIQUE
+    -- FIDE ID (ej. 1503014 = Magnus Carlsen): identifica a la persona real sin depender de cómo
+    -- se escribe el nombre. NULL en los jugadores sintéticos. Une players con champions.
+    fide_id     INTEGER UNIQUE
 );
 
 -- ---------------------------------------------------------------------------
@@ -100,8 +100,9 @@ CREATE INDEX idx_player_ratings_player ON player_ratings (player_id);
 
 -- ---------------------------------------------------------------------------
 -- champions — personas que jugaron un campeonato mundial (datos reales, de Wikidata)
--- birth_year / death_year: de Wikidata (wikidata_id permite verificarlos); death_year NULL = vivo.
--- player_id: vínculo OPCIONAL con players, por wikidata_id (hoy 8 de 44); el resto queda en
+-- birth_year / death_year: de Wikidata; death_year NULL = vivo. fide_id: FIDE ID verificado contra
+-- ratings.fide.com; NULL en los campeones históricos anteriores al sistema de ratings.
+-- player_id: vínculo OPCIONAL con players, por fide_id (hoy 8 de 44); el resto queda en
 -- NULL en lugar de inventar jugadores sintéticos para los campeones históricos.
 -- ---------------------------------------------------------------------------
 CREATE TABLE champions (
@@ -109,7 +110,7 @@ CREATE TABLE champions (
     name        TEXT    NOT NULL UNIQUE,
     birth_year  INTEGER NOT NULL,
     death_year  INTEGER,
-    wikidata_id TEXT    NOT NULL,
+    fide_id     INTEGER UNIQUE,
     player_id   INTEGER REFERENCES players (player_id)
 );
 
@@ -130,8 +131,7 @@ CREATE TABLE world_championships (
     runner_up_id    INTEGER NOT NULL REFERENCES champions (champion_id),  -- rival
     score           TEXT,               -- marcador, ganador primero (NULL si no hubo match)
     title_line      TEXT    NOT NULL CHECK (title_line IN ('main', 'classical', 'fide_split')),
-    format          TEXT    NOT NULL CHECK (format IN ('match', 'tournament', 'knockout')),
-    notes           TEXT                -- aclaraciones (empate que retiene el título, etc.)
+    format          TEXT    NOT NULL CHECK (format IN ('match', 'tournament', 'knockout'))
 );
 
 -- ---------------------------------------------------------------------------

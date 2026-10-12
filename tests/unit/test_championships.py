@@ -11,7 +11,7 @@ from chess_agent.db.championships import (
     _COLUMNS,
     CHAMPIONS,
     CHAMPIONSHIPS,
-    PLAYER_WIKIDATA_IDS,
+    PLAYER_FIDE_IDS,
 )
 
 _IDX = {c: i for i, c in enumerate(_COLUMNS)}
@@ -75,10 +75,10 @@ def test_cada_campeon_aparece_en_algun_campeonato_y_viceversa():
 def test_champions_sin_duplicados_y_con_datos_validos():
     nombres = [nombre for nombre, *_ in CHAMPIONS]
     assert len(nombres) == len(set(nombres))
-    for nombre, nacimiento, muerte, qid in CHAMPIONS:
+    for nombre, nacimiento, muerte, fide in CHAMPIONS:
         assert 1800 <= nacimiento <= 2010, nombre
         assert muerte is None or nacimiento < muerte, nombre
-        assert re.fullmatch(r"Q\d+", qid), f"{nombre}: id de Wikidata inválido {qid!r}"
+        assert fide is None or fide > 0, f"{nombre}: FIDE ID inválido {fide!r}"
 
 
 def test_los_campeones_ya_no_vivian_antes_de_ser_campeones():
@@ -117,7 +117,7 @@ def test_ddl_del_modulo_coincide_con_schema_sql():
     )
 
 
-# --- vínculo champions <-> players por wikidata_id ---
+# --- vínculo champions <-> players por FIDE ID ---
 
 _ENLACES_ESPERADOS = {
     "Magnus Carlsen",
@@ -131,24 +131,27 @@ _ENLACES_ESPERADOS = {
 }
 
 
-def test_ids_de_jugadores_son_de_jugadores_reales_del_seed_y_unicos():
+# Alireza Firouzja: su FIDE ID (de Wikidata) no se pudo contrastar con ratings.fide.com.
+_SIN_FIDE_ID = {"Alireza Firouzja"}
+
+
+def test_fide_ids_de_jugadores_son_de_jugadores_reales_del_seed_y_unicos():
     reales = {nombre for nombre, *_ in seed.REAL_PLAYERS}
-    assert set(PLAYER_WIKIDATA_IDS) == reales
-    assert len(set(PLAYER_WIKIDATA_IDS.values())) == len(PLAYER_WIKIDATA_IDS)
-    assert all(re.fullmatch(r"Q\d+", qid) for qid in PLAYER_WIKIDATA_IDS.values())
+    assert set(PLAYER_FIDE_IDS) == reales - _SIN_FIDE_ID
+    assert len(set(PLAYER_FIDE_IDS.values())) == len(PLAYER_FIDE_IDS)
 
 
-def test_ids_de_campeones_son_unicos():
-    ids = [qid for *_, qid in CHAMPIONS]
+def test_fide_ids_de_campeones_son_unicos():
+    ids = [fide for *_, fide in CHAMPIONS if fide is not None]
     assert len(ids) == len(set(ids))
 
 
 def test_enlaces_champions_players_son_los_esperados():
-    # Fija cuáles campeones quedan vinculados a `players` (por wikidata_id): si cambia la lista
-    # de jugadores o de campeones, este test obliga a revisar el vínculo en vez de romperse en
+    # Fija cuáles campeones quedan vinculados a `players` (por FIDE ID): si cambia la lista de
+    # jugadores o de campeones, este test obliga a revisar el vínculo en vez de romperse en
     # silencio.
-    por_qid = {qid: nombre for nombre, qid in PLAYER_WIKIDATA_IDS.items()}
-    enlazados = {nombre: por_qid[qid] for nombre, _, _, qid in CHAMPIONS if qid in por_qid}
+    por_fide = {fide: nombre for nombre, fide in PLAYER_FIDE_IDS.items()}
+    enlazados = {nombre: por_fide[fide] for nombre, _, _, fide in CHAMPIONS if fide in por_fide}
     assert set(enlazados.values()) == _ENLACES_ESPERADOS
     # Y el nombre del campeón coincide con el del jugador (misma persona, mismo nombre).
     assert all(campeon == jugador for campeon, jugador in enlazados.items())
