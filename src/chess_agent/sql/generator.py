@@ -45,6 +45,30 @@ SQL: SELECT COUNT(*) FROM games WHERE result='1/2-1/2';
 
 P: ¿Cuántas veces se jugó la Defensa Siciliana?
 SQL: SELECT COUNT(*) FROM games g JOIN openings o ON g.opening_id=o.opening_id WHERE o.name ILIKE '%Sicilian%';
+
+P: ¿Quién ganó el campeonato mundial de 1972 y contra quién?
+SQL: SELECT w.name AS winner, r.name AS runner_up, wc.score FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id JOIN champions r ON wc.runner_up_id=r.champion_id WHERE wc.year=1972 AND wc.title_line='main';
+
+P: ¿Quién era el campeón del mundo en 1950?
+SQL: SELECT w.name AS champion, wc.year AS last_title_match_year FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id WHERE wc.title_line='main' AND wc.year<=1950 ORDER BY wc.year DESC, wc.championship_id DESC LIMIT 1;
+
+P: ¿Cuántos títulos mundiales ganó Kasparov?
+SQL: SELECT MAX(wc.win_number) FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id WHERE w.name ILIKE '%Kasparov%';
+
+P: ¿En qué año se coronó campeón del mundo Capablanca y a quién derrotó?
+SQL: SELECT wc.year, r.name AS runner_up, wc.score FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id JOIN champions r ON wc.runner_up_id=r.champion_id WHERE w.name ILIKE '%Capablanca%' AND wc.win_number=1;
+
+P: ¿Contra quién jugó Anand su primer match por el título mundial?
+SQL: SELECT wc.year AS first_title_match_year, w.name AS winner, r.name AS runner_up, wc.score FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id JOIN champions r ON wc.runner_up_id=r.champion_id WHERE w.name ILIKE '%Anand%' OR r.name ILIKE '%Anand%' ORDER BY wc.year ASC, wc.championship_id ASC LIMIT 1;
+
+P: ¿Cuántos años vivió Capablanca?
+SQL: SELECT name, death_year - birth_year AS years_lived FROM champions WHERE name ILIKE '%Capablanca%';
+
+P: ¿Qué edad tenía Fischer cuando fue campeón del mundo?
+SQL: SELECT wc.year - w.birth_year AS age FROM world_championships wc JOIN champions w ON wc.winner_id=w.champion_id WHERE w.name ILIKE '%Fischer%' AND wc.win_number=1;
+
+P: ¿Cuál es el peak rating de los campeones del mundo que están en la lista de jugadores?
+SQL: SELECT DISTINCT c.name, p.peak_rating FROM champions c JOIN players p ON c.player_id=p.player_id JOIN world_championships wc ON wc.winner_id=c.champion_id ORDER BY p.peak_rating DESC NULLS LAST;
 """
 
 # Reglas de mapeo (resumen de docs/data/term-mapping.md).
@@ -58,8 +82,16 @@ _TERM_MAPPING = """\
 - "país"/"de Noruega" -> players.country / tournaments.country
 - "apertura"/"Siciliana" -> openings.name (usar ILIKE '%...%')
 - "torneo" -> tournaments.name (usar ILIKE '%...%')
-- nombres de jugador/apertura/torneo: comparar con ILIKE '%texto%'
-- "más"/"top N"/"el mayor" -> ORDER BY ... DESC LIMIT N; "promedio" -> AVG(...); "cuántos" -> COUNT(*)
+- "campeón del mundo"/"campeonato mundial"/"World Champion"/"se coronó" -> world_championships (datos reales
+  1886-2024) con JOIN a champions para los nombres: winner_id y runner_up_id apuntan a champions.champion_id
+  (champions.name, birth_year, death_year). champions.player_id enlaza con players solo para 8 personas (NULL el resto).
+  Usar title_line='main' salvo que pregunten por el cisma 1993-2006 ('classical' = PCA/Clásico, 'fide_split' = FIDE).
+  "campeón en el año X" -> el último campeonato con year<=X en la línea 'main'. "se coronó/llegó a campeón" ->
+  win_number=1. "cuántos títulos" -> MAX(win_number). "edad" -> year - champions.birth_year. Los nombres de
+  campeones se comparan con ILIKE '%apellido%'. "primer match por el título" de alguien -> el más antiguo donde
+  figura como winner o runner_up (no usar win_number). "cuántos años vivió" -> death_year - birth_year.
+- NO se puede calcular la duración de un reinado (hasta quién lo derrotó) ni "el reinado más largo" con esta
+  tabla: devolver NO_SQL.
 """
 
 _SYSTEM_TEMPLATE = """\

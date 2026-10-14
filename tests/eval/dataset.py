@@ -9,7 +9,7 @@ Casos curados `pregunta -> expectativa` según `docs/quality/evaluation.md`, cub
 Cada caso trae lo necesario para verificar automáticamente: ruta esperada, y según la categoría
 un `gold_sql` (para comparar el dato), la fuente esperada (RAG) o `must_refuse`.
 
-Nota: los casos RAG dependen de los PDFs de muestra actuales; si se reemplazan por los reales,
+Nota: los casos RAG dependen de los PDFs actuales de data/pdfs; si se reemplazan,
 revisar `expect_source` y las preguntas.
 """
 
@@ -55,6 +55,22 @@ CASES: list[EvalCase] = [
              "sql",
              gold_sql="SELECT COUNT(*) FROM games g JOIN players p ON g.white_player_id=p.player_id"
                       " WHERE p.name ILIKE '%Carlsen%' AND g.result='1-0'"),
+    # --- SQL: campeonatos mundiales (tabla world_championships) ---
+    EvalCase("sql-champion-1972", "¿Quién fue campeón del mundo en 1972?", "es", "SQL", "sql",
+             gold_sql="SELECT w.name FROM world_championships wc"
+                      " JOIN champions w ON wc.winner_id=w.champion_id"
+                      " WHERE wc.year=1972 AND wc.title_line='main'"),
+    EvalCase("sql-kasparov-titles", "¿Cuántos títulos mundiales ganó Kasparov?", "es", "SQL",
+             "sql",
+             gold_sql="SELECT MAX(wc.win_number) FROM world_championships wc"
+                      " JOIN champions w ON wc.winner_id=w.champion_id"
+                      " WHERE w.name ILIKE '%Kasparov%'"),
+    EvalCase("sql-capablanca-en", "who did Capablanca beat to become world champion?", "en",
+             "SQL", "sql",
+             gold_sql="SELECT r.name FROM world_championships wc"
+                      " JOIN champions w ON wc.winner_id=w.champion_id"
+                      " JOIN champions r ON wc.runner_up_id=r.champion_id"
+                      " WHERE w.name ILIKE '%Capablanca%' AND wc.win_number=1"),
     # --- RAG (español) ---
     EvalCase("rag-touchmove", "¿qué establece la regla de la pieza tocada?", "es", "RAG", "rag",
              expect_source="fide"),
@@ -63,6 +79,8 @@ CASES: list[EvalCase] = [
     EvalCase("rag-stalemate", "¿qué es el rey ahogado?", "es", "RAG", "rag", expect_source="fide"),
     EvalCase("rag-principles", "¿cuáles son los principios generales de la apertura?", "es", "RAG",
              "rag", expect_source="opening"),
+    EvalCase("rag-split", "¿por qué hubo dos campeones mundiales entre 1993 y 2006?", "es", "RAG",
+             "rag", expect_source="world-chess-championship"),
     # --- RAG (inglés) ---
     EvalCase("rag-touchmove-en", "what does the touch-move rule state?", "en", "RAG", "rag",
              expect_source="fide"),

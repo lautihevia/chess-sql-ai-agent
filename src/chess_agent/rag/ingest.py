@@ -22,20 +22,18 @@ from chess_agent.rag.embeddings import embed_texts
 
 PDF_DIR = Path(__file__).resolve().parents[3] / "data" / "pdfs"
 
-# 250 palabras es el balance entre dos problemas opuestos:
-# - chunks muy chicos (ej. 50 palabras): el embedding es preciso pero le falta
-#   contexto para responder.
-# - chunks muy grandes (ej. 600+ palabras): tiene contexto pero el embedding
-#   promedia muchos temas y la búsqueda por similitud pierde precisión.
-# En documentos de referencia densos (ej. las Leyes FIDE, con muchos artículos
-# cortos por página), 250 palabras aíslan cada regla en su propio chunk; con 600
-# una página entera caía en un solo chunk y el embedding promediaba artículos
-# distintos, enterrando la regla buscada.
-CHUNK_WORDS = 250
+# Decisión, mediciones y alternativas: docs/decisions/0006-tamano-de-chunk-y-k.md
+# El tamaño del chunk está acotado por el modelo de embeddings: paraphrase-multilingual-MiniLM-L12
+# solo "lee" los primeros 128 tokens de cada texto (max_seq_length) y trunca el resto en silencio.
+# Con chunks de 250 palabras (~350 tokens) el 91% de los fragmentos quedaba truncado: el vector
+# representaba solo su primera mitad y los datos del medio (p. ej. la creación de la PCA en 1993)
+# no se podían encontrar. Con 70 palabras solo ~9% supera los 128 tokens (tablas y referencias,
+# con muchos tokens por palabra); 60 casi no mejora y agrega ~20% más de chunks.
+CHUNK_WORDS = 70
 # El solapamiento evita cortar ideas a la mitad: si una regla empieza al final de un chunk
 # y termina al principio del siguiente, ambos chunks la contienen completa.
-# chunk 1: [palabras 1..250], chunk 2: [palabras 201..450], chunk 3: [palabras 401..650]
-OVERLAP_WORDS = 50
+# chunk 1: [palabras 1..70], chunk 2: [palabras 56..125], chunk 3: [palabras 111..180]
+OVERLAP_WORDS = 15
 
 # DDL idempotente (espeja la sección RAG de db/schema.sql) para que la ingesta no dependa
 # de reejecutar el schema completo (que borraría los datos de dominio).

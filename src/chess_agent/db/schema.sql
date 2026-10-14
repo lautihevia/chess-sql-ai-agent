@@ -1,10 +1,12 @@
--- Esquema de la BD de ajedrez (6 tablas relacionales).
+-- Esquema de la BD de ajedrez (8 tablas relacionales).
 -- Fuente de verdad: docs/data/data-dictionary.md y specs/001-sql-rag-agent/data-model.md.
 --
 -- Los IDs son enteros asignados explícitamente por el seed (no SERIAL) para que la generación
 -- de datos sea determinista y reproducible (semilla fija, Principio V).
 -- Re-ejecutable: elimina las tablas en orden inverso a sus dependencias antes de crearlas.
 
+DROP TABLE IF EXISTS world_championships CASCADE;
+DROP TABLE IF EXISTS champions CASCADE;
 DROP TABLE IF EXISTS player_ratings CASCADE;
 DROP TABLE IF EXISTS moves CASCADE;
 DROP TABLE IF EXISTS games CASCADE;
@@ -21,7 +23,10 @@ CREATE TABLE players (
     country     TEXT,
     birth_year  INTEGER,
     title       TEXT    CHECK (title IN ('GM', 'IM', 'FM', 'WGM', 'WIM', 'CM', 'NM')),
-    peak_rating INTEGER
+    peak_rating INTEGER,
+    -- FIDE ID (ej. 1503014 = Magnus Carlsen): identifica a la persona real sin depender de cómo
+    -- se escribe el nombre. NULL en los jugadores sintéticos. Une players con champions.
+    fide_id     INTEGER UNIQUE
 );
 
 -- ---------------------------------------------------------------------------
@@ -92,6 +97,42 @@ CREATE TABLE player_ratings (
 CREATE INDEX idx_games_white_player ON games (white_player_id);
 CREATE INDEX idx_games_black_player ON games (black_player_id);
 CREATE INDEX idx_player_ratings_player ON player_ratings (player_id);
+
+-- ---------------------------------------------------------------------------
+-- champions — personas que jugaron un campeonato mundial (datos reales, de Wikidata)
+-- birth_year / death_year: de Wikidata; death_year NULL = vivo. fide_id: FIDE ID verificado contra
+-- ratings.fide.com; NULL en los campeones históricos anteriores al sistema de ratings.
+-- player_id: vínculo OPCIONAL con players, por fide_id (hoy 8 de 44); el resto queda en
+-- NULL en lugar de inventar jugadores sintéticos para los campeones históricos.
+-- ---------------------------------------------------------------------------
+CREATE TABLE champions (
+    champion_id INTEGER PRIMARY KEY,
+    name        TEXT    NOT NULL UNIQUE,
+    birth_year  INTEGER NOT NULL,
+    death_year  INTEGER,
+    fide_id     INTEGER UNIQUE,
+    player_id   INTEGER REFERENCES players (player_id)
+);
+
+-- ---------------------------------------------------------------------------
+-- world_championships — historial de campeonatos mundiales (datos reales, 1886-2024)
+-- Fuente: data/pdfs/list-of-world-chess-championships.pdf. Se carga con seed.py o, sola, con
+-- db/championships.py (recrea champions y world_championships sin tocar las demás tablas).
+-- title_line: 'main' = linaje principal (privado hasta 1946, FIDE desde 1948, reunificado
+--             desde 2006); 'classical' = título clásico PCA 1993-2004; 'fide_split' = título
+--             FIDE durante el cisma 1993-2005. Hay varias filas en 1993 y en 2000/2004.
+-- ---------------------------------------------------------------------------
+CREATE TABLE world_championships (
+    championship_id INTEGER PRIMARY KEY,
+    year            INTEGER NOT NULL,   -- año en que se jugó (si cruza año, el de inicio)
+    location        TEXT,               -- sede (ciudades, en inglés)
+    winner_id       INTEGER NOT NULL REFERENCES champions (champion_id),  -- ganó o retuvo
+    win_number      INTEGER NOT NULL,   -- n-ésimo título de ese jugador (como numera la fuente)
+    runner_up_id    INTEGER NOT NULL REFERENCES champions (champion_id),  -- rival
+    score           TEXT,               -- marcador, ganador primero (NULL si no hubo match)
+    title_line      TEXT    NOT NULL CHECK (title_line IN ('main', 'classical', 'fide_split')),
+    format          TEXT    NOT NULL CHECK (format IN ('match', 'tournament', 'knockout'))
+);
 
 -- ---------------------------------------------------------------------------
 -- RAG: vectores de los fragmentos de PDFs (pgvector).

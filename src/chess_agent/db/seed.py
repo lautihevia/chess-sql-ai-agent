@@ -17,6 +17,7 @@ import datetime as dt
 import random
 from pathlib import Path
 
+from chess_agent.db import championships
 from chess_agent.db.client import connect
 
 #Este archivo sirve para cargar los datos de prueba en supabase. Podria verse luego alguna mejor forma de cargar estas
@@ -117,7 +118,9 @@ def _build_rows(rng: random.Random):
     # --- players ---
     players = []
     for i, (name, country, birth, title, peak) in enumerate(REAL_PLAYERS, start=1):
-        players.append((i, name, country, birth, title, peak))
+        players.append((
+            i, name, country, birth, title, peak, championships.PLAYER_FIDE_IDS.get(name),
+        ))
     next_id = len(REAL_PLAYERS) + 1
     for _ in range(10):  # 10 sintéticos -> 30 en total
         name = f"{rng.choice(SYNTH_FIRST)} {rng.choice(SYNTH_LAST)}"
@@ -128,6 +131,7 @@ def _build_rows(rng: random.Random):
             rng.randint(1985, 2007),
             rng.choice(TITLES),
             rng.randint(2300, 2650),
+            None,  # fide_id: los jugadores sintéticos no tienen FIDE ID
         ))
         next_id += 1
     player_ids = [p[0] for p in players]
@@ -197,8 +201,9 @@ def seed() -> dict[str, int]:
     with connect(read_only=False) as conn, conn.cursor() as cur:
         _apply_schema(cur)
         cur.executemany(
-            "INSERT INTO players (player_id, name, country, birth_year, title, peak_rating)"
-            " VALUES (%s, %s, %s, %s, %s, %s)",
+            "INSERT INTO players"
+            " (player_id, name, country, birth_year, title, peak_rating, fide_id)"
+            " VALUES (%s, %s, %s, %s, %s, %s, %s)",
             players,
         )
         cur.executemany(
@@ -229,6 +234,7 @@ def seed() -> dict[str, int]:
             " VALUES (%s, %s, %s, %s)",
             ratings,
         )
+        n_champions, n_championships = championships.replace_all(cur)
         conn.commit()
 
     return {
@@ -238,6 +244,8 @@ def seed() -> dict[str, int]:
         "games": len(games),
         "moves": len(moves),
         "player_ratings": len(ratings),
+        "champions": n_champions,
+        "world_championships": n_championships,
     }
 
 
